@@ -47,6 +47,7 @@ The following screenshot is a decently accurate schema to describe the tool's wo
 
 ```
 Usage:
+Usage:
   -t, --target=VALUE         Target machine
   -c, --code=VALUE           Code to execute
   -e, --encoded              Indicates that provided code is base64 encoded
@@ -74,13 +75,18 @@ Usage:
   -w, --wldp-bypass=VALUE    Uses the given PowerShell script to bypass WLDP
                                (fs, smb o http[s])
       --wx, --encrypted-wldp Indicates that provided WLDP bypass is encrypted
-  -x, --execute-assembly=VALUE
-                             [Download and] Execute given executable
-      --xx, --encrypted-assembly=VALUE
-                             Indicates that provided Assembly is encrypted
+  -x, --executable=VALUE     [Download and] Execute given executable
+      --xx, --encrypted-executable
+                             Indicates that provided Exe/DLL is encrypted
+      --xcs, --executable-csharp
+                             Indicates that the executable provided is C# -
+                               (.NET)
   -R, --reflective-injection Uses Invoke-ReflectivePEInjection to load the
                                assmebly from memory (requires Invoke-
                                ReflectivePEInjection to be imported!)
+  -P, --powershell-decrypt   Force use of PowerShell-based decryption
+  -k, --encryption-key=VALUE Uses the provided key for encryption/decryption
+      --ssl                  Force use of SSL
   -h, -?, --help             Show Help
 ```
 
