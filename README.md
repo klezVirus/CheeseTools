@@ -38,7 +38,7 @@ The main functionalities implemented are:
 - Download binary and execute
     + Standard: Transfer -> Write to disk -> Execute
     + Reflective: Transfer -> Execute from memory
-- Supports module/assemblies encryption (partial)
+- Supports AES Encryption of PS modules, C# assemblies and other executables to evade detection
     + All imported Modules/Assemblies can be encrypted in transit or at rest, and are decrypted just before usage
 
 The following screenshot is a decently accurate schema to describe the tool's workflow:
@@ -46,7 +46,6 @@ The following screenshot is a decently accurate schema to describe the tool's wo
 ![CheesePS Workflow](./assets/CheesePS.png)
 
 ```
-Usage:
 Usage:
   -t, --target=VALUE         Target machine
   -c, --code=VALUE           Code to execute
@@ -74,11 +73,11 @@ Usage:
                                REGINI
   -w, --wldp-bypass=VALUE    Uses the given PowerShell script to bypass WLDP
                                (fs, smb o http[s])
-      --wx, --encrypted-wldp Indicates that provided WLDP bypass is encrypted
+      --wX, --encrypted-wldp Indicates that provided WLDP bypass is encrypted
   -x, --executable=VALUE     [Download and] Execute given executable
-      --xx, --encrypted-executable
+      --xX, --encrypted-executable
                              Indicates that provided Exe/DLL is encrypted
-      --xcs, --executable-csharp
+      --xCS, --executable-csharp
                              Indicates that the executable provided is C# -
                                (.NET)
   -R, --reflective-injection Uses Invoke-ReflectivePEInjection to load the
@@ -92,8 +91,14 @@ Usage:
 
 _Note: If executed without a target, the script will execute against the local machine_
 
-Also see [AmsiBypass][3].
+#### Advantages of using the tool against raw PowerShell:
 
+* Cleaner, more intuitive command line
+* Automatic bypasses (CLM, AMSI, WLDP)
+* Avoids to perform outbound connections from the remote target (everything is transfered through WS-Management)
+* Supports full encryption in transit
+
+Also see [AmsiBypass][3].
 
 ## CheeseDCOM
 Command Exec / Lateral Movement via DCOM. Must be running in the context of a privileged user. 
