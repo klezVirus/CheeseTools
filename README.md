@@ -130,12 +130,21 @@ _Note: If executed with `-t .`, the script will execute against the local machin
 
 Also see [Lateral Movement Using DCOM Objects and C#][4]
 
+## CheeseRDP
+RDP credentials stealer via RDI (reflective DLL injection). Must be running in the context of a privileged user, a user with SeImpersonatePrivilege. 
+This tool is built on top of RdpThief by MDSec, but it's been fully wrapped in a single C# to enable it to be run via .NET Reflection (`Assembly.Load` and similar). In this way, it's 
+possible to run it via Covenant, without the struggle of uploading a DLL on the target system. 
+
+The idea behind this tool has been summarised in the following article:
+
+* ~~[CheeseRDP: When RDP is actually Rob Dat Password!][7]~~
+
+No usage instructions, just launch it!
+
 ## Credits
 - [MiscTool][1] by [rasta-mouse](https://github.com/rasta-mouse)
 - [AmsiBypass][6] by [0xB455](https://github.com/0xB455)
 
-
-## References
 
 [1]: https://github.com/rasta-mouse/MiscTools
 [2]: https://rastamouse.me/2018/10/amsiscanbuffer-bypass---part-1/
@@ -143,3 +152,4 @@ Also see [Lateral Movement Using DCOM Objects and C#][4]
 [4]: https://klezvirus.github.io/RedTeaming/LateralMovement/LateralMovementDCOM/
 [5]: https://klezvirus.github.io/RedTeaming/LateralMovement/LateralMovementPSRemoting/
 [6]: https://github.com/0xB455/AmsiBypass
+[7]: https://klezvirus.github.io/RedTeaming/LateralMovement/LateralMovementRDPThief/
