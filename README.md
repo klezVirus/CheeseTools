@@ -131,19 +131,26 @@ _Note: If executed with `-t .`, the script will execute against the local machin
 Also see [Lateral Movement Using DCOM Objects and C#][4]
 
 ## CheeseRDP
-RDP credentials stealer via RDI (reflective DLL injection). Must be running in the context of a privileged user, a user with SeImpersonatePrivilege. 
+RDP credentials stealer via RDI (reflective DLL injection). Must be running in the context of a privileged user, or a user with SeImpersonatePrivilege. 
 This tool is built on top of RdpThief by MDSec, but it's been fully wrapped in a single C# to enable it to be run via .NET Reflection (`Assembly.Load` and similar). In this way, it's 
 possible to run it via Covenant, without the struggle of uploading a DLL on the target system. 
 
-The idea behind this tool has been summarised in the following article:
+```
+Usage:
+    CheeseRDP [actions]
+Actions:
+    wait: keep listening for any new mstsc.exe process indefinitely (stop with ctrl-C)
+    clean: delete the credentials dump file if present
+    dump: dump the content of the file if present, parsing the credentials in a compact format
+```
 
-* ~~[CheeseRDP: When RDP is actually Rob Dat Password!][7]~~
-
-No usage instructions, just launch it!
+_Note: If executed without options, the program will try to inject in an active mstsc.exe process (the default wait time is 10 seconds)_
 
 ## Credits
 - [MiscTool][1] by [rasta-mouse](https://github.com/rasta-mouse)
 - [AmsiBypass][6] by [0xB455](https://github.com/0xB455)
+- [RdpThief][8] by [0x90AL](https://github.com/0x09AL)
+- [SharpRDPThief][9] by [passthehashbrowns](https://github.com/passthehashbrowns)
 
 
 [1]: https://github.com/rasta-mouse/MiscTools
@@ -153,3 +160,5 @@ No usage instructions, just launch it!
 [5]: https://klezvirus.github.io/RedTeaming/LateralMovement/LateralMovementPSRemoting/
 [6]: https://github.com/0xB455/AmsiBypass
 [7]: https://klezvirus.github.io/RedTeaming/LateralMovement/LateralMovementRDPThief/
+[8]: https://github.com/0x09AL/RdpThief
+[9]: https://github.com/passthehashbrowns/SharpRDPThief

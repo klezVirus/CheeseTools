@@ -13,17 +13,6 @@ namespace CheeseRDP
         byte[] dllBytes;
         bool DEBUG = false; 
 
-        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-        delegate IntPtr ReflectiveLoader();
-
-        //
-        // Remember this FP should be changed to match the signature of 
-        // the DLL exported function. In this case, I preferred to put a no-param 
-        // as the implementation can still be fully done in the DLL
-        //
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        delegate bool ExportedFunction();
-
         public static uint RotateRight(uint val, int count)
         {
             return (val >> count) | (val << (32 - count));
@@ -143,20 +132,5 @@ namespace CheeseRDP
 
             return true;
         }
-
-        public void callFunction(IntPtr peLocation, string functionName, IntPtr data)
-        {
-
-            IntPtr expFunctionLocation = GetProcAddressR(peLocation, functionName);
-            ExportedFunction exportedFunction;
-
-            if (expFunctionLocation == IntPtr.Zero)
-            { }
-
-            exportedFunction = (ExportedFunction)Marshal.GetDelegateForFunctionPointer(expFunctionLocation, typeof(ExportedFunction));
-            exportedFunction();
-        }
-
-
     }
 }
