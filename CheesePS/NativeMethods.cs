@@ -1,7 +1,4 @@
-﻿using System;
-using System.Runtime.InteropServices;
-
-namespace CheesePS
+﻿namespace CheesePS
 {
     internal class NativeMethods
     {

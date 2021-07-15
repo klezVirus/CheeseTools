@@ -12,13 +12,19 @@ namespace CheeseSQL.Commands
         public string Description()
         {
             return $"[*] {CommandName}\r\n" +
-    $"  Description: Retrieve SQL Logins Available for Impersonation on Linked SQL Servers";
+                   $"  Description: Retrieve SQL Logins Available for Impersonation on Linked SQL Servers";
         }
 
         public string Usage()
         {
-            return $"{Description()}\r\n  " + 
-                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} /db:DATABASE /server:SERVER /target:TARGET [/impersonate:USER] [/impersonate-linked:USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
+            return $"{Description()}\r\n  " +
+                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} " +
+                $"/db:DATABASE " +
+                $"/server:SERVER " +
+                $"/target:TARGET " +
+                $"[/impersonate:USER] " +
+                $"[/impersonate-linked:USER] " +
+                $"[/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
         }
 
         public void Execute(Dictionary<string, string> arguments)
@@ -148,12 +154,12 @@ namespace CheeseSQL.Commands
             reader = command.ExecuteReader();
             while (reader.Read())
             {
-                Console.WriteLine("[*] Login that can be impersonated: {0}",  reader[0]);
+                Console.WriteLine("[*] Login that can be impersonated: {0}", reader[0]);
             }
             reader.Close();
-            
+
             connection.Close();
-            
+
         }
     }
 }

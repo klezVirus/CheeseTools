@@ -8,15 +8,25 @@ namespace CheeseSQL.Commands
     public class dbllinkedlogin : ICommand
     {
         public static string CommandName => "dbllinkedlogin";
-        
-        public string Description() {
+
+        public string Description()
+        {
             return $"[*] {CommandName}\r\n" +
-                $"  Description: Get Login Information on Doubly Linked SQL Server";
+                   $"  Description: Retrieve SQL Logins Available for Impersonation on Doubly-Linked SQL Servers";
         }
 
-        public string Usage() {
+        public string Usage()
+        {
             return $"{Description()}\r\n  " +
-                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} /db:DATABASE /server:SERVER /intermediate:INTERMEDIATE [/impersonate:USER] [/impersonate-intermediate:USER] [/impersonate-linked:USER] /target:TARGET [/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
+                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} " +
+                $"/db:DATABASE " +
+                $"/server:SERVER " +
+                $"/intermediate:INTERMEDIATE " +
+                $"/target:TARGET " +
+                $"[/impersonate:USER] " +
+                $"[/impersonate-intermediate:USER] " +
+                $"[/impersonate-linked:USER] " +
+                $"[/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
         }
 
         public void Execute(Dictionary<string, string> arguments)
@@ -134,10 +144,13 @@ namespace CheeseSQL.Commands
             if (!String.IsNullOrEmpty(impersonate_linked) && !String.IsNullOrEmpty(impersonate_intermediate))
             {
                 loginQuery = $@"SELECT * FROM OPENQUERY(""{intermediate}"", 'EXECUTE AS LOGIN = ''{impersonate_intermediate}'' SELECT * FROM OPENQUERY (""{target}"", ''EXECUTE AS LOGIN = ''''{impersonate_linked}'''' {base_query}'')');";
-            } else if (!String.IsNullOrEmpty(impersonate_linked)) {
+            }
+            else if (!String.IsNullOrEmpty(impersonate_linked))
+            {
                 loginQuery = $@"SELECT * FROM OPENQUERY(""{intermediate}"", 'SELECT * FROM OPENQUERY (""{target}"", ''EXECUTE AS LOGIN = ''''{impersonate_linked}'''' {base_query}'')');";
             }
-            else if(!String.IsNullOrEmpty(impersonate_intermediate)) {
+            else if (!String.IsNullOrEmpty(impersonate_intermediate))
+            {
                 loginQuery = $@"SELECT * FROM OPENQUERY(""{intermediate}"", 'EXECUTE AS LOGIN = ''{impersonate_intermediate}'' SELECT * FROM OPENQUERY (""{target}"", ''{base_query}'')');";
             }
 
@@ -146,15 +159,17 @@ namespace CheeseSQL.Commands
                 loginQuery = $"EXECUTE AS LOGIN = '{impersonate}' {loginQuery}";
             }
             SqlCommand command = new SqlCommand(loginQuery, connection);
-            using (SqlDataReader reader = command.ExecuteReader()) { 
+            using (SqlDataReader reader = command.ExecuteReader())
+            {
                 reader.Read();
-                if(reader.FieldCount >= 2) { 
+                if (reader.FieldCount >= 2)
+                {
                     Console.WriteLine("[+] Logged in as: {0}, mapped as {1}", reader[0], reader[1]);
                 }
             }
 
             base_query = "SELECT distinct b.name FROM sys.server_permissions a INNER JOIN sys.server_principals b ON a.grantor_principal_id = b.principal_id WHERE a.permission_name = ''''IMPERSONATE'''';";
-            
+
             loginQuery = $@"SELECT * FROM OPENQUERY(""{intermediate}"", 'SELECT * FROM OPENQUERY (""{target}"", ''{base_query}'')');";
 
             if (!String.IsNullOrEmpty(impersonate_linked) && !String.IsNullOrEmpty(impersonate_intermediate))
@@ -179,7 +194,7 @@ namespace CheeseSQL.Commands
             {
                 while (reader.Read())
                 {
-                    Console.WriteLine("[*] Login that can be impersonated: {0}",  reader.GetString(0));
+                    Console.WriteLine("[*] Login that can be impersonated: {0}", reader.GetString(0));
                 }
             }
             connection.Close();

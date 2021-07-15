@@ -12,13 +12,20 @@ namespace CheeseSQL.Commands
         public string Description()
         {
             return $"[*] {CommandName}\r\n" +
-    $"  Description: Execute Encoded PowerShell Command on Linked SQL Server via 'xp_cmdshell'";
+                   $"  Description: Execute Encoded PowerShell Command on Linked SQL Server via 'xp_cmdshell'";
         }
 
         public string Usage()
         {
-            return $"{Description()}\r\n  " + 
-                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} /db:DATABASE /server:SERVER /target:TARGET /command:COMMAND [/impersonate:USER] [/impersonate-linked:USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
+            return $"{Description()}\r\n  " +
+                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} " +
+                $"/db:DATABASE " +
+                $"/server:SERVER " +
+                $"/target:TARGET " +
+                $"/command:COMMAND " +
+                $"[/impersonate:USER] " +
+                $"[/impersonate-linked:USER] " +
+                $"[/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
         }
 
         public void Execute(Dictionary<string, string> arguments)
@@ -134,10 +141,11 @@ namespace CheeseSQL.Commands
             }
 
 
-            if (!String.IsNullOrEmpty(impersonate)) {
+            if (!String.IsNullOrEmpty(impersonate))
+            {
                 enableAdvOptions = $"EXECUTE AS LOGIN = '{impersonate}' {enableAdvOptions}";
             }
-            
+
             SqlCommand command = new SqlCommand(enableAdvOptions, connection);
             SqlDataReader reader = command.ExecuteReader();
             reader.Read();

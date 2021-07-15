@@ -244,6 +244,7 @@
     <Compile Include="Commands\getlogin.cs" />
     <Compile Include="Commands\ICommand.cs" />
     <Compile Include="Commands\linkedquery.cs" />
+    <Compile Include="Commands\linkedclr.cs" />
     <Compile Include="Commands\linkedxp.cs" />
     <Compile Include="Commands\clr.cs" />
     <Compile Include="Commands\ole.cs" />
@@ -252,8 +253,10 @@
     <Compile Include="Helpers\ArgParser.cs" />
     <Compile Include="Helpers\ArgParserResult.cs" />
     <Compile Include="Helpers\AssemblyCompiler.cs" />
+    <Compile Include="Helpers\AssemblyLoader.cs" />
     <Compile Include="Helpers\CommandCollection.cs" />
     <Compile Include="Helpers\Info.cs" />
+    <Compile Include="Helpers\StringUtils.cs" />
     <Compile Include="Helpers\TablePrinter.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

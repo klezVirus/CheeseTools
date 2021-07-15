@@ -12,13 +12,20 @@ namespace CheeseSQL.Commands
         public string Description()
         {
             return $"[*] {CommandName}\r\n" +
-    $"  Description: Execute Encoded PowerShell Command on Linked SQL Server via 'OPENQUERY'";
+                   $"  Description: Execute Encoded PowerShell Command on Linked SQL Server via 'OPENQUERY'";
         }
 
         public string Usage()
         {
-            return $"{Description()}\r\n  " + 
-                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} /db:DATABASE /server:SERVER /target:TARGET /command:COMMAND /impersonate:USER /impersonate-linked:USER [/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
+            return $"{Description()}\r\n  " +
+                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} " +
+                $"/db:DATABASE " +
+                $"/server:SERVER " +
+                $"/target:TARGET " +
+                $"/command:COMMAND " +
+                $"[/impersonate:USER] " +
+                $"[/impersonate-linked:USER] " +
+                $"[/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
         }
 
         public void Execute(Dictionary<string, string> arguments)

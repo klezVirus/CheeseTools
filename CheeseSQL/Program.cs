@@ -1,7 +1,7 @@
-﻿using System;
+﻿using CheeseSQL.Helpers;
+using System;
 using System.Collections.Generic;
 using System.IO;
-using CheeseSQL.Helpers;
 
 namespace CheeseSQL
 {

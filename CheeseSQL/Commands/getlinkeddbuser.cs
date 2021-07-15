@@ -13,13 +13,20 @@ namespace CheeseSQL.Commands
         public string Description()
         {
             return $"[*] {CommandName}\r\n" +
-    $"  Description: Retrieve user information on Linked SQL Servers";
+                   $"  Description: Retrieve Information on the SQL Login, Currently Mapped User, and Available User Roles on Linked SQL Servers";
         }
 
         public string Usage()
         {
             return $"{Description()}\r\n  " +
-                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} /db:DATABASE /server:SERVER /target:TARGET [/permissions] [/impersonate:USER] [/impersonate-linked:USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
+                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} " +
+                $"/db:DATABASE " +
+                $"/server:SERVER " +
+                $"/target:TARGET " +
+                $"[/permissions] " +
+                $"[/impersonate:USER] " +
+                $"[/impersonate-linked:USER] " +
+                $"[/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
         }
 
         public void Execute(Dictionary<string, string> arguments)
@@ -190,7 +197,7 @@ SELECT *
                permission_name
         FROM   fn_my_permissions(NULL, ''SERVER'')) p
 ORDER  BY entity_class,
-          NAME');"; 
+          NAME');";
                 }
 
                 if (!String.IsNullOrEmpty(impersonate))

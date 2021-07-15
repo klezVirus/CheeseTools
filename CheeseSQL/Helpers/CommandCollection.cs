@@ -1,6 +1,6 @@
-﻿using System;
+﻿using CheeseSQL.Commands;
+using System;
 using System.Collections.Generic;
-using CheeseSQL.Commands;
 
 namespace CheeseSQL.Helpers
 {
@@ -30,6 +30,7 @@ namespace CheeseSQL.Helpers
             _availableCommands.Add(clr.CommandName, () => new clr());
             _availableCommands.Add(rpc.CommandName, () => new rpc());
             _availableCommands.Add(linkedxp.CommandName, () => new linkedxp());
+            _availableCommands.Add(linkedclr.CommandName, () => new linkedclr());
             _availableCommands.Add(linkedquery.CommandName, () => new linkedquery());
             _availableCommands.Add(dbllinkedxp.CommandName, () => new dbllinkedxp());
         }
@@ -50,7 +51,8 @@ namespace CheeseSQL.Helpers
                     // and execute it with the arguments from the command line
                     command.Execute(arguments);
                 }
-                catch (Exception e){
+                catch (Exception e)
+                {
                     Console.WriteLine($"[-] Exception: {e.Message}");
                 }
                 commandWasFound = true;
@@ -59,8 +61,10 @@ namespace CheeseSQL.Helpers
             return commandWasFound;
         }
 
-        public void ShowDescription() {
-            foreach(Func<ICommand> command in this._availableCommands.Values){
+        public void ShowDescription()
+        {
+            foreach (Func<ICommand> command in this._availableCommands.Values)
+            {
                 var cmd = command.Invoke();
                 Console.WriteLine(cmd.Description());
             }

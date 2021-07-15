@@ -12,12 +12,12 @@ namespace CheeseSQL.Commands
         public string Description()
         {
             return $"[*] {CommandName}\r\n" +
-    $"  Description: Retrieve Linked Servers";
+                   $"  Description: Retrieve Linked Servers";
         }
 
         public string Usage()
         {
-            return $"{Description()}\r\n  " + 
+            return $"{Description()}\r\n  " +
                 $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} /db:DATABASE /server:SERVER [/verbose] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
         }
 
@@ -44,7 +44,7 @@ namespace CheeseSQL.Commands
             {
                 connectserver = arguments["/server"];
             }
-            
+
             if (arguments.ContainsKey("/verbose"))
             {
                 verbose = true;
@@ -114,7 +114,8 @@ namespace CheeseSQL.Commands
                     }
                 }
             }
-            else {
+            else
+            {
                 string execCmd = "SELECT name, is_linked, is_remote_login_enabled, is_data_access_enabled, is_rpc_out_enabled FROM sys.servers;";
                 SqlCommand command = new SqlCommand(execCmd, connection);
 

@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Runtime.InteropServices;
-using static CheeseRDP.PEStructures;
 using static CheeseRDP.Win32;
 
 namespace CheeseRDP
@@ -11,7 +9,7 @@ namespace CheeseRDP
     {
 
         byte[] dllBytes;
-        bool DEBUG = false; 
+        bool DEBUG = false;
 
         public static uint RotateRight(uint val, int count)
         {
@@ -31,7 +29,7 @@ namespace CheeseRDP
         }
 
 
-        public DllMapper(string dllName, bool debug=false)
+        public DllMapper(string dllName, bool debug = false)
         {
             this.dllBytes = File.ReadAllBytes(dllName);
             this.DEBUG = debug;

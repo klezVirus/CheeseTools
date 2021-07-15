@@ -88,7 +88,8 @@ public class ClassName
 
         public static byte[] compileWithRoselyn(string className, string methodName, string assemblyName = null)
         {
-            if (assemblyName == null) {
+            if (assemblyName == null)
+            {
                 assemblyName = Guid.NewGuid().ToString();
             }
             Console.WriteLine("  [*] Generating template");
@@ -139,7 +140,7 @@ public class ClassName
             parameters.ReferencedAssemblies.Add("System.Xml.Linq.dll");
 
             string currentDirectory = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location);
-            
+
             string[] payload = template.Replace("ClassName", className).Replace("MethodName", methodName).Split(Environment.NewLine.ToCharArray());
 
             CompilerResults results = provider.CompileAssemblyFromSource(parameters, payload);

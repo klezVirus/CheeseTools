@@ -12,13 +12,18 @@ namespace CheeseSQL.Commands
         public string Description()
         {
             return $"[*] {CommandName}\r\n" +
-    $"  Description: Execute Encoded PowerShell Command via 'sp_OACreate' and 'sp_OAMethod'";
+                   $"  Description: Execute Encoded PowerShell Command via 'sp_OACreate' and 'sp_OAMethod'";
         }
 
         public string Usage()
         {
-            return $"{Description()}\r\n  " + 
-                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} /db:DATABASE /server:SERVER /command:COMMAND [/impersonate:USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
+            return $"{Description()}\r\n  " +
+                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} " +
+                $"/db:DATABASE " +
+                $"/server:SERVER " +
+                $"/command:COMMAND " +
+                $"[/impersonate:USER] " +
+                $"[/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
         }
 
         public void Execute(Dictionary<string, string> arguments)

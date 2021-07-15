@@ -13,13 +13,16 @@ namespace CheeseSQL
         public string Description()
         {
             return $"[*] {CommandName}\r\n" +
-    $"  Description: Find MSSQL Instances, using Domain SPNs";
+                   $"  Description: Find MSSQL Instances, using Domain SPNs";
         }
 
         public string Usage()
         {
             return $"{Description()}\r\n  " +
-                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} /ldapPath:LDAP_PATH /account:FILTER /computer";
+                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} " +
+                $"/ldapPath:LDAP_PATH " +
+                $"/account:FILTER " +
+                $"/computer";
         }
 
         public void Execute(Dictionary<string, string> arguments)
@@ -33,17 +36,21 @@ namespace CheeseSQL
             string _filter = null;
 
             string ldapPath = null;
-            if (arguments.ContainsKey("/ldapPath")) {
+            if (arguments.ContainsKey("/ldapPath"))
+            {
                 arguments.TryGetValue("/ldapPath", out ldapPath);
             }
-            if (arguments.ContainsKey("/account")) {
+            if (arguments.ContainsKey("/account"))
+            {
                 arguments.TryGetValue("/account", out _filter);
             }
 
-            if (!String.IsNullOrEmpty(_filter) && arguments.ContainsKey("/computer")) {
+            if (!String.IsNullOrEmpty(_filter) && arguments.ContainsKey("/computer"))
+            {
                 spnFilter = GetComputerAccountFilter(_filter);
             }
-            else if (!String.IsNullOrEmpty(_filter)) {
+            else if (!String.IsNullOrEmpty(_filter))
+            {
                 spnFilter = GetDomainAccountFilter(_filter);
             }
 
@@ -127,44 +134,56 @@ namespace CheeseSQL
 
                     if (null != item.Properties["lastlogontimestamp"])
                     {
-                        if(item.Properties["lastlogontimestamp"].Count > 0) { 
+                        if (item.Properties["lastlogontimestamp"].Count > 0)
+                        {
                             lastLogon = DateTime.FromFileTime((long)item.Properties["lastlogontimestamp"][0]);
                         }
                     }
                     string samAccountName = "";
-                    if (null != item.Properties["samaccountname"]) {
-                        if (item.Properties["samaccountname"].Count > 0) {
+                    if (null != item.Properties["samaccountname"])
+                    {
+                        if (item.Properties["samaccountname"].Count > 0)
+                        {
                             samAccountName = item.Properties["samaccountname"][0].ToString();
                         }
                     }
 
                     string userCN = "";
-                    if (null != item.Properties["cn"]) {
-                        if (item.Properties["cn"].Count > 0) {
+                    if (null != item.Properties["cn"])
+                    {
+                        if (item.Properties["cn"].Count > 0)
+                        {
                             samAccountName = item.Properties["cn"][0].ToString();
                         }
                     }
-                    
+
                     string description = "";
-                    if (null != item.Properties["description"]) {
-                        if (item.Properties["description"].Count > 0) {
+                    if (null != item.Properties["description"])
+                    {
+                        if (item.Properties["description"].Count > 0)
+                        {
                             description = item.Properties["description"][0].ToString();
                         }
                     }
 
                     string userSid = "";
-                    if (null != item.Properties["objectsid"]) {
-                        if (item.Properties["objectsid"].Count > 0) {
-                            if (item.Properties["objectsid"][0].GetType().Equals(typeof(byte[]))) { 
+                    if (null != item.Properties["objectsid"])
+                    {
+                        if (item.Properties["objectsid"].Count > 0)
+                        {
+                            if (item.Properties["objectsid"][0].GetType().Equals(typeof(byte[])))
+                            {
                                 userSid = BitConverter.ToString((byte[])item.Properties["objectsid"][0]).Replace("-", "");
-                            } else if (item.Properties["objectsid"][0].GetType().Equals(typeof(string))) {
+                            }
+                            else if (item.Properties["objectsid"][0].GetType().Equals(typeof(string)))
+                            {
                                 userSid = item.Properties["objectsid"][0].ToString();
                             }
                         }
                     }
 
 
-                        Console.Write($@"
+                    Console.Write($@"
 SPN:            {spn}
 ServerInstance: {serverInstance}
 Server:         {spnServer}

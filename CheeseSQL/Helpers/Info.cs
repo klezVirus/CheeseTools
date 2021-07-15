@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace CheeseSQL.Helpers
+﻿namespace CheeseSQL.Helpers
 {
     public static class Info
     {
