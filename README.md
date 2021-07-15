@@ -153,7 +153,7 @@ Moreover, CheeseSQL has been specifically modified to run from Covenant (via ref
 Particuarly niche is the implementation of the CLR abuse, which allow a user to compile and upload a MSSQL extension on the fly with Roselyin to achive command execution.
 A very little demo is shown below, the command executed is an encoded PowerShell Covenant downloader):
 
-![CheeseSQL CLR Attack](./assests/cheesesql-clr.gif)
+![CheeseSQL CLR Attack](./assets/cheesesql-clr.gif)
 
 Following my rule of "always give credit when credit is due", this tool has been developed starting from an already existing project 
 by [Jb05s](https://github.com/Jb05s), called [SharpSQL](https://github.com/Jb05s/SharpCollection/tree/master/SharpSQL), so big shout out to Jeremy for his work.
