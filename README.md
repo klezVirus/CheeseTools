@@ -211,6 +211,9 @@ Usage:
 [*] dbllinkedxp
   Description: Execute Encoded PowerShell Command on Doubly Linked SQL Server via 'xp_cmdshell'
   Usage: CheeseSQL dbllinkedxp /db:DATABASE /server:SERVER /intermediate:INTERMEDIATE [/impersonate:USER] [/impersonate-intermediate:USER] [/impersonate-linked:USER] /target:TARGET /command:COMMAND [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
+[*] linkedclr
+  Description: Execute Encoded PowerShell Command on Linked SQL Server via custom .NET assemblies
+  Usage: CheeseSQL linkedclr /db:DATABASE /server:SERVER /target:TARGET /command:COMMAND /assembly:DLL /class:CLASS /method:METHOD [/compile] [/impersonate:USER] [/impersonate-linked:USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
 ```
 
 ## Credits
