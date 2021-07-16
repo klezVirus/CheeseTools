@@ -36,24 +36,9 @@ namespace CheeseSQL.Commands
             string impersonate = "";
             string impersonation_type = "LOGIN";
 
-            bool sqlauth = false;
+            bool sqlauth = arguments.ContainsKey("/sqlauth");
 
-            if (arguments.ContainsKey("/sqlauth"))
-            {
-                sqlauth = true;
-            }
-            if (arguments.ContainsKey("/db"))
-            {
-                database = arguments["/db"];
-            }
-            if (arguments.ContainsKey("/server"))
-            {
-                connectserver = arguments["/server"];
-            }
-            if (arguments.ContainsKey("/target"))
-            {
-                target = arguments["/target"];
-            }
+            arguments.TryGetValue("/impersonate", out impersonate);
             if (arguments.ContainsKey("/impersonate"))
             {
                 impersonate = arguments["/impersonate"];
@@ -69,17 +54,17 @@ namespace CheeseSQL.Commands
                 }
             }
 
-            if (String.IsNullOrEmpty(database))
+            if (!arguments.TryGetValue("/db", out database))
             {
                 Console.WriteLine("\r\n[X] You must supply a database!\r\n");
                 return;
             }
-            if (String.IsNullOrEmpty(connectserver))
+            if (!arguments.TryGetValue("/server", out connectserver))
             {
                 Console.WriteLine("\r\n[X] You must supply an authentication server!\r\n");
                 return;
             }
-            if (String.IsNullOrEmpty(target))
+            if (!arguments.TryGetValue("/target", out target))
             {
                 Console.WriteLine("\r\n[X] You must supply a target linked SQL server!\r\n");
                 return;

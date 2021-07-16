@@ -6,7 +6,7 @@ using System.Data.SqlClient;
 
 namespace CheeseSQL.Commands
 {
-    public class linkedquery : ICommand
+    public class linkedqueryxp : ICommand
     {
         public static string CommandName => "linkedquery";
 
@@ -37,43 +37,25 @@ namespace CheeseSQL.Commands
             string target = "";
             string cmd = "";
             string impersonate = "";
+            string intermediate = "";
             string impersonate_linked = "";
+            string impersonate_intermediate = "";
 
-            bool sqlauth = false;
+            bool sqlauth = arguments.ContainsKey("/sqlauth");
 
-            if (arguments.ContainsKey("/sqlauth"))
-            {
-                sqlauth = true;
-            }
-            if (arguments.ContainsKey("/db"))
-            {
-                database = arguments["/db"];
-            }
-            if (arguments.ContainsKey("/server"))
-            {
-                connectserver = arguments["/server"];
-            }
-            if (arguments.ContainsKey("/impersonate"))
-            {
-                impersonate = arguments["/impersonate"];
-            }
-            if (arguments.ContainsKey("/impersonate-linked"))
-            {
-                impersonate_linked = arguments["/impersonate-linked"];
-            }
+            arguments.TryGetValue("/impersonate", out impersonate);
+            arguments.TryGetValue("/intermediate", out intermediate);
+            arguments.TryGetValue("/impersonate-intermediate", out impersonate_intermediate);
+            arguments.TryGetValue("/impersonate-linked", out impersonate_linked);
 
-            if (arguments.ContainsKey("/target"))
-            {
-                target = arguments["/target"];
-            }
-            if (arguments.ContainsKey("/command"))
-            {
-                cmd = arguments["/command"];
-            }
-
-            if (String.IsNullOrEmpty(database))
+            if (!arguments.TryGetValue("/db", out database))
             {
                 Console.WriteLine("\r\n[X] You must supply a database!\r\n");
+                return;
+            }
+            if (!arguments.TryGetValue("/server", out connectserver))
+            {
+                Console.WriteLine("\r\n[X] You must supply an authentication server!\r\n");
                 return;
             }
             if (String.IsNullOrEmpty(connectserver))
@@ -81,12 +63,12 @@ namespace CheeseSQL.Commands
                 Console.WriteLine("\r\n[X] You must supply an authentication server!\r\n");
                 return;
             }
-            if (String.IsNullOrEmpty(target))
+            if (!arguments.TryGetValue("/target", out target))
             {
                 Console.WriteLine("\r\n[X] You must supply a target server!\r\n");
                 return;
             }
-            if (String.IsNullOrEmpty(cmd))
+            if (!arguments.TryGetValue("/command", out cmd))
             {
                 Console.WriteLine("\r\n[X] You must supply a command to execute!\r\n");
                 return;
@@ -113,7 +95,14 @@ namespace CheeseSQL.Commands
 
             foreach (string query in queries)
             {
-                SQLExecutor.ExecuteLinkedQuery(connection, query, target, impersonate, impersonate_linked);
+                if (String.IsNullOrEmpty(intermediate))
+                {
+                    SQLExecutor.ExecuteLinkedQuery(connection, query, target, impersonate, impersonate_linked);
+                }
+                else 
+                {
+                    SQLExecutor.ExecuteDoublyLinkedQuery(connection, query, target, intermediate, impersonate, impersonate_linked, impersonate_intermediate);
+                }
             }
 
             connection.Close();

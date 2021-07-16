@@ -22,18 +22,13 @@ namespace CheeseSQL.Helpers
             _availableCommands.Add(getlogin.CommandName, () => new getlogin());
             _availableCommands.Add(getdbuser.CommandName, () => new getdbuser());
             _availableCommands.Add(getlinked.CommandName, () => new getlinked());
-            _availableCommands.Add(getlinkedlogin.CommandName, () => new getlinkedlogin());
-            _availableCommands.Add(getlinkeddbuser.CommandName, () => new getlinkeddbuser());
-            _availableCommands.Add(dbllinkedlogin.CommandName, () => new dbllinkedlogin());
             _availableCommands.Add(xp.CommandName, () => new xp());
             _availableCommands.Add(ole.CommandName, () => new ole());
             _availableCommands.Add(clr.CommandName, () => new clr());
             _availableCommands.Add(rpc.CommandName, () => new rpc());
-            _availableCommands.Add(linkedxp.CommandName, () => new linkedxp());
-            _availableCommands.Add(linkedquery.CommandName, () => new linkedquery());
-            _availableCommands.Add(dbllinkedxp.CommandName, () => new dbllinkedxp());
-            _availableCommands.Add(linkedclr.CommandName, () => new linkedclr());
+            _availableCommands.Add(linkedqueryxp.CommandName, () => new linkedqueryxp());
             _availableCommands.Add(getserverinfo.CommandName, () => new getserverinfo());
+            _availableCommands.Add(openquery.CommandName, () => new openquery());
         }
 
         public bool ExecuteCommand(string commandName, Dictionary<string, string> arguments)

@@ -6,14 +6,14 @@ using System.Data.SqlClient;
 
 namespace CheeseSQL.Commands
 {
-    public class getlinkedlogin : ICommand
+    public class openquery : ICommand
     {
-        public static string CommandName => "getlinkedlogin";
+        public static string CommandName => "openquery";
 
         public string Description()
         {
             return $"[*] {CommandName}\r\n" +
-                   $"  Description: Retrieve SQL Logins Available for Impersonation on Linked SQL Servers";
+                   $"  Description: Execute an arbitrary query using 'OPENQUERY'";
         }
 
         public string Usage()
@@ -23,7 +23,10 @@ namespace CheeseSQL.Commands
                 $"/db:DATABASE " +
                 $"/server:SERVER " +
                 $"/target:TARGET " +
+                $"/query:QUERY " +
+                $"[/intermediate:INTERMEDIATE] " +
                 $"[/impersonate:USER] " +
+                $"[/impersonate-intermediate:USER] " +
                 $"[/impersonate-linked:USER] " +
                 $"[/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
         }
@@ -33,49 +36,38 @@ namespace CheeseSQL.Commands
             string connectInfo = "";
             string database = "";
             string connectserver = "";
-            string impersonate = "";
-            string impersonate_linked = "";
             string target = "";
-            bool sqlauth = false;
+            string intermediate = "";
+            string query = "";
+            string impersonate = "";
+            string impersonate_intermediate = "";
+            string impersonate_linked = "";
 
-            if (arguments.ContainsKey("/sqlauth"))
-            {
-                sqlauth = true;
-            }
-            if (arguments.ContainsKey("/db"))
-            {
-                database = arguments["/db"];
-            }
-            if (arguments.ContainsKey("/server"))
-            {
-                connectserver = arguments["/server"];
-            }
-            if (arguments.ContainsKey("/target"))
-            {
-                target = arguments["/target"];
-            }
+            bool sqlauth = arguments.ContainsKey("/sqlauth");
 
-            if (arguments.ContainsKey("/impersonate"))
-            {
-                impersonate = arguments["/impersonate"];
-            }
-            if (arguments.ContainsKey("/impersonate-linked"))
-            {
-                impersonate_linked = arguments["/impersonate-linked"];
-            }
-            if (String.IsNullOrEmpty(database))
+            arguments.TryGetValue("/impersonate", out impersonate);
+            arguments.TryGetValue("/intermediate", out intermediate);
+            arguments.TryGetValue("/impersonate-intermediate", out impersonate_intermediate);
+            arguments.TryGetValue("/impersonate-linked", out impersonate_linked);
+
+            if (!arguments.TryGetValue("/db", out database))
             {
                 Console.WriteLine("\r\n[X] You must supply a database!\r\n");
                 return;
             }
-            if (String.IsNullOrEmpty(connectserver))
+            if (!arguments.TryGetValue("/server", out connectserver))
             {
                 Console.WriteLine("\r\n[X] You must supply an authentication server!\r\n");
                 return;
             }
-            if (String.IsNullOrEmpty(target))
+            if (!arguments.TryGetValue("/target", out target))
             {
                 Console.WriteLine("\r\n[X] You must supply a target server!\r\n");
+                return;
+            }
+            if (!arguments.TryGetValue("/query", out query))
+            {
+                Console.WriteLine("\r\n[X] You must supply a query to execute!\r\n");
                 return;
             }
 
@@ -90,18 +82,16 @@ namespace CheeseSQL.Commands
                 return;
             }
 
-            var queries = new List<string>();
-
-            queries.Add("SELECT SYSTEM_USER as 'Logged in as', CURRENT_USER as 'Mapped as';");
-            queries.Add("SELECT distinct b.name AS 'Login that can be impersonated' FROM sys.server_permissions a INNER JOIN sys.server_principals b ON a.grantor_principal_id = b.principal_id WHERE a.permission_name = 'IMPERSONATE';");
-
-            foreach (string query in queries)
+            if (String.IsNullOrEmpty(intermediate))
             {
                 SQLExecutor.ExecuteLinkedQuery(connection, query, target, impersonate, impersonate_linked);
             }
+            else 
+            {
+                SQLExecutor.ExecuteDoublyLinkedQuery(connection, query, target, intermediate, impersonate, impersonate_linked, impersonate_intermediate);
+            }
 
             connection.Close();
-
         }
     }
 }

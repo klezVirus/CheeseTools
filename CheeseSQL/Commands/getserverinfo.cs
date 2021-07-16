@@ -17,7 +17,15 @@ namespace CheeseSQL.Commands
         public string Usage()
         {
             return $"{Description()}\r\n  " +
-                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} /db:DATABASE /server:SERVER [/impersonate:USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
+                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} " +
+                $"/db:DATABASE " +
+                $"/server:SERVER " +
+                $"[/intermediate:INTERMEDIATE] " +
+                $"[/target:TARGET] " +
+                $"[/impersonate:USER] " +
+                $"[/impersonate-intermediate:USER] " +
+                $"[/impersonate-linked:USER] " +
+                $"[/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
         }
 
         public void Execute(Dictionary<string, string> arguments)
@@ -26,45 +34,26 @@ namespace CheeseSQL.Commands
             string connectserver = "";
             string connectInfo = "";
             string target = "";
+            string intermediate = "";
             string impersonate_linked = "";
+            string impersonate_intermediate = "";
 
-            bool sqlauth = false;
             string impersonate = "";
 
-            if (arguments.ContainsKey("/sqlauth"))
-            {
-                sqlauth = true;
-            }
-            if (arguments.ContainsKey("/db"))
-            {
-                database = arguments["/db"];
-            }
-            if (arguments.ContainsKey("/server"))
-            {
-                connectserver = arguments["/server"];
-            }
-            if (arguments.ContainsKey("/impersonate"))
-            {
-                impersonate = arguments["/impersonate"];
-            }
-            if (arguments.ContainsKey("/impersonate-linked"))
-            {
-                impersonate_linked = arguments["/impersonate-linked"];
-            }
-            if (arguments.ContainsKey("/server"))
-            {
-                connectserver = arguments["/server"];
-            }
-            if (arguments.ContainsKey("/target"))
-            {
-                target = arguments["/target"];
-            }
-            if (String.IsNullOrEmpty(database))
+            bool sqlauth = arguments.ContainsKey("/sqlauth");
+
+            arguments.TryGetValue("/impersonate", out impersonate);
+            arguments.TryGetValue("/intermediate", out intermediate);
+            arguments.TryGetValue("/target", out target);
+            arguments.TryGetValue("/impersonate-intermediate", out impersonate_intermediate);
+            arguments.TryGetValue("/impersonate-linked", out impersonate_linked);
+
+            if (!arguments.TryGetValue("/db", out database))
             {
                 Console.WriteLine("\r\n[X] You must supply a database!\r\n");
                 return;
             }
-            if (String.IsNullOrEmpty(connectserver))
+            if (!arguments.TryGetValue("/server", out connectserver))
             {
                 Console.WriteLine("\r\n[X] You must supply an authentication server!\r\n");
                 return;
@@ -105,13 +94,17 @@ namespace CheeseSQL.Commands
                 Console.WriteLine("[*] Checking {0} settings on {1}..", config, String.IsNullOrEmpty(target) ? connectserver : target);
                 foreach (string query in queries)
                 {
-                    if (string.IsNullOrEmpty(target))
+                    if (string.IsNullOrEmpty(target) && string.IsNullOrEmpty(intermediate))
                     {
                         SQLExecutor.ExecuteQuery(connection, String.Format(query, config));
                     }
-                    else
+                    else if (string.IsNullOrEmpty(intermediate))
                     {
                         SQLExecutor.ExecuteLinkedQuery(connection, String.Format(query, config), target, impersonate, impersonate_linked);
+                    }
+                    else
+                    {
+                        SQLExecutor.ExecuteDoublyLinkedQuery(connection, String.Format(query, config), target, intermediate, impersonate, impersonate_linked, impersonate_intermediate);
                     }
                 }
                 Console.WriteLine(" -----------------------------------");

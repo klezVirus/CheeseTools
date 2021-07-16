@@ -233,24 +233,19 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Commands\dbllinkedlogin.cs" />
-    <Compile Include="Commands\dbllinkedxp.cs" />
+    <Compile Include="Commands\getlogin.cs" />
+    <Compile Include="Commands\openquery.cs" />
+    <Compile Include="Commands\xp.cs" />
     <Compile Include="Commands\getserverinfo.cs" />
-    <Compile Include="Commands\getlinkeddbuser.cs" />
     <Compile Include="Commands\getdbuser.cs" />
     <Compile Include="Commands\gethash.cs" />
     <Compile Include="Commands\getlinked.cs" />
-    <Compile Include="Commands\getlinkedlogin.cs" />
     <Compile Include="Commands\findspn.cs" />
-    <Compile Include="Commands\getlogin.cs" />
     <Compile Include="Commands\ICommand.cs" />
-    <Compile Include="Commands\linkedquery.cs" />
-    <Compile Include="Commands\linkedclr.cs" />
-    <Compile Include="Commands\linkedxp.cs" />
+    <Compile Include="Commands\linkedqueryxp.cs" />
     <Compile Include="Commands\clr.cs" />
     <Compile Include="Commands\ole.cs" />
     <Compile Include="Commands\rpc.cs" />
-    <Compile Include="Commands\xp.cs" />
     <Compile Include="Helpers\ArgParser.cs" />
     <Compile Include="Helpers\ArgParserResult.cs" />
     <Compile Include="Helpers\AssemblyCompiler.cs" />

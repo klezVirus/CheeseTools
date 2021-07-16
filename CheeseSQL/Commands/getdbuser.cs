@@ -17,47 +17,46 @@ namespace CheeseSQL.Commands
         public string Usage()
         {
             return $"{Description()}\r\n  " +
-                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} /db:DATABASE /server:SERVER [/impersonate:USER] [/permissions] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
+                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} " +
+                $"/db:DATABASE " +
+                $"/server:SERVER " +
+                $"[/permissions] " +
+                $"[/intermediate:INTERMEDIATE] " +
+                $"[/target:TARGET] " +
+                $"[/impersonate:USER] " +
+                $"[/impersonate-intermediate:USER] " +
+                $"[/impersonate-linked:USER] " +
+                $"[/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
         }
 
         public void Execute(Dictionary<string, string> arguments)
         {
             string database = "";
             string connectserver = "";
+            string target = "";
+            string intermediate = "";
             string connectInfo = "";
 
-            bool sqlauth = false;
-            bool permissions = false;
 
             string impersonate = "";
+            string impersonate_intermediate = "";
+            string impersonate_linked = "";
 
-            if (arguments.ContainsKey("/sqlauth"))
-            {
-                sqlauth = true;
-            }
-            if (arguments.ContainsKey("/db"))
-            {
-                database = arguments["/db"];
-            }
-            if (arguments.ContainsKey("/server"))
-            {
-                connectserver = arguments["/server"];
-            }
-            if (arguments.ContainsKey("/impersonate"))
-            {
-                impersonate = arguments["/impersonate"];
-            }
-            if (arguments.ContainsKey("/permissions"))
-            {
-                permissions = true;
-            }
+            bool permissions = arguments.ContainsKey("/permissions");
+            bool sqlauth = arguments.ContainsKey("/sqlauth");
 
-            if (String.IsNullOrEmpty(database))
+            arguments.TryGetValue("/impersonate", out impersonate);
+            arguments.TryGetValue("/intermediate", out intermediate);
+            arguments.TryGetValue("/target", out target);
+            arguments.TryGetValue("/impersonate-intermediate", out impersonate_intermediate);
+            arguments.TryGetValue("/impersonate-linked", out impersonate_linked);
+
+            if (!arguments.TryGetValue("/db", out database))
             {
                 Console.WriteLine("\r\n[X] You must supply a database!\r\n");
                 return;
             }
-            if (String.IsNullOrEmpty(connectserver))
+            if (!arguments.TryGetValue("/server", out connectserver))
             {
                 Console.WriteLine("\r\n[X] You must supply an authentication server!\r\n");
                 return;
@@ -85,7 +84,18 @@ namespace CheeseSQL.Commands
 
             foreach (string query in queries)
             {
-                SQLExecutor.ExecuteQuery(connection, query);
+                if (String.IsNullOrEmpty(target) && String.IsNullOrEmpty(intermediate))
+                {
+                    SQLExecutor.ExecuteQuery(connection, query);
+                }
+                else if (String.IsNullOrEmpty(intermediate))
+                {
+                    SQLExecutor.ExecuteLinkedQuery(connection, query, target, impersonate, impersonate_linked);
+                }
+                else
+                {
+                    SQLExecutor.ExecuteDoublyLinkedQuery(connection, query, target, intermediate, impersonate, impersonate_linked, impersonate_intermediate);
+                }
             }
 
             /* 
@@ -96,7 +106,7 @@ namespace CheeseSQL.Commands
             {
                 Console.WriteLine("[*] Checking user permissions..");
 
-                string queryPermissions = @"SELECT *
+                string query = @"SELECT *
     FROM(SELECT 'OBJECT' AS entity_class,
                 NAME,
                 subentity_name,
@@ -118,7 +128,17 @@ namespace CheeseSQL.Commands
         FROM   fn_my_permissions(NULL, 'SERVER')) p
     ORDER  BY entity_class,
             NAME";
-                SqlCommand command = new SqlCommand(queryPermissions, connection);
+
+                if (!String.IsNullOrEmpty(intermediate) && !String.IsNullOrEmpty(target))
+                {
+                    query = SQLExecutor.PrepareDoublyLinkedQuery(query, target, intermediate, impersonate, impersonate_linked, impersonate_intermediate);
+                }
+                else if (!String.IsNullOrEmpty(target))
+                {
+                    query = SQLExecutor.PrepareLinkedQuery(query, target, impersonate, impersonate_linked);
+                }
+
+                SqlCommand command = new SqlCommand(query, connection);
 
                 TablePrinter.PrintRow("ENTITY", "NAME", "SUBENTITY", "PERMISSION");
                 TablePrinter.PrintLine();

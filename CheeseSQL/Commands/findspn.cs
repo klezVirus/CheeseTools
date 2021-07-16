@@ -27,7 +27,13 @@ namespace CheeseSQL
 
         public void Execute(Dictionary<string, string> arguments)
         {
-            var domainController = string.Format("LDAP://{0}", Environment.GetEnvironmentVariable("logonserver").Replace("\\", string.Empty));
+            
+            string logonServer = Environment.GetEnvironmentVariable("logonserver");
+            if (string.IsNullOrEmpty(logonServer)) {
+                Console.WriteLine("[-] Unable to find a logon server. Ensure you are in a Domain context");
+                return;
+            }
+            var domainController = string.Format("LDAP://{0}", logonServer.Replace("\\", string.Empty));
             string distinguishedName;
             DirectoryEntry directoryEntry;
             string spnFilter = string.Empty;
@@ -36,15 +42,9 @@ namespace CheeseSQL
             string _filter = null;
 
             string ldapPath = null;
-            if (arguments.ContainsKey("/ldapPath"))
-            {
-                arguments.TryGetValue("/ldapPath", out ldapPath);
-            }
-            if (arguments.ContainsKey("/account"))
-            {
-                arguments.TryGetValue("/account", out _filter);
-            }
-
+            arguments.TryGetValue("/ldapPath", out ldapPath);
+            arguments.TryGetValue("/account", out _filter);
+        
             if (!String.IsNullOrEmpty(_filter) && arguments.ContainsKey("/computer"))
             {
                 spnFilter = GetComputerAccountFilter(_filter);
