@@ -35,6 +35,8 @@ namespace CheeseSQL.Commands
             string target = "";
             string impersonate = "";
             string impersonation_type = "LOGIN";
+            string intermediate = "";
+            string impersonate_intermediate = "";
 
             bool sqlauth = arguments.ContainsKey("/sqlauth");
 
@@ -93,7 +95,16 @@ namespace CheeseSQL.Commands
             foreach (string step in procedures.Keys)
             {
                 Console.WriteLine("[*] {0}", step);
-                SQLExecutor.ExecuteProcedure(connection, procedures[step]);
+                if (String.IsNullOrEmpty(intermediate))
+                {
+                    SQLExecutor.ExecuteProcedure(connection, procedures[step]);
+                }
+                else 
+                {
+                    // This may appear strange, but when we perform this kind of procedure, 
+                    // we're not on the target server itself, but on an adjacent server
+                    SQLExecutor.ExecuteLinkedProcedure(connection, procedures[step], intermediate, impersonate, impersonate_intermediate);
+                }
             }
 
             connection.Close();
