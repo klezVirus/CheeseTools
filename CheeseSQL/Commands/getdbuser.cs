@@ -24,8 +24,6 @@ namespace CheeseSQL.Commands
         {
             string database = "";
             string connectserver = "";
-            string user = "";
-            string password = "";
             string connectInfo = "";
 
             bool sqlauth = false;
@@ -65,102 +63,34 @@ namespace CheeseSQL.Commands
                 return;
             }
 
-            if (sqlauth)
+            SqlConnection connection;
+            SQLExecutor.ConnectionInfo(arguments, connectserver, database, sqlauth, out connectInfo);
+            if (String.IsNullOrEmpty(connectInfo))
             {
-                if (arguments.ContainsKey("/user"))
-                {
-                    user = arguments["/user"];
-                }
-                if (arguments.ContainsKey("/password"))
-                {
-                    password = arguments["/password"];
-                }
-                if (String.IsNullOrEmpty(user))
-                {
-                    Console.WriteLine("\r\n[X] You must supply the SQL account user!\r\n");
-                    return;
-                }
-                if (String.IsNullOrEmpty(password))
-                {
-                    Console.WriteLine("\r\n[X] You must supply the SQL account password!\r\n");
-                    return;
-                }
-                connectInfo = "Data Source= " + connectserver + "; Initial Catalog= " + database + "; User ID=" + user + "; Password=" + password;
+                return;
             }
-            else
+            if (!SQLExecutor.Authenticate(connectInfo, out connection))
             {
-                connectInfo = "Server = " + connectserver + "; Database = " + database + "; Integrated Security = True;";
-            }
-
-            SqlConnection connection = new SqlConnection(connectInfo);
-
-            try
-            {
-                connection.Open();
-                Console.WriteLine($"[+] Authentication to the '{database}' Database on '{connectserver}' Successful!");
-            }
-            catch
-            {
-                Console.WriteLine($"[-] Authentication to the '{database}' Database on '{connectserver}' Failed.");
                 return;
             }
 
-            string queryLogin = "SELECT SYSTEM_USER;";
-            SqlCommand command = new SqlCommand(queryLogin, connection);
-            SqlDataReader reader = command.ExecuteReader();
-            reader.Read();
-            Console.WriteLine("[+] Logged in as: " + reader[0]);
-            reader.Close();
-
+            var queries = new List<string>();
             if (!String.IsNullOrEmpty(impersonate))
             {
-                string execAs = $"EXECUTE AS LOGIN = '{impersonate}';";
-                command = new SqlCommand(execAs, connection);
-                reader = command.ExecuteReader();
-                reader.Read();
-                Console.WriteLine("[*] Attempting impersonation..");
-                reader.Close();
+                queries.Add($"EXECUTE AS LOGIN = '{impersonate}';");
             }
+            queries.Add("SELECT SYSTEM_USER as 'Logged in as', CURRENT_USER as 'Mapped as';");
+            queries.Add("SELECT IS_SRVROLEMEMBER('public') as 'Public role';");
+            queries.Add("SELECT IS_SRVROLEMEMBER('sysadmin') as 'Sysadmin role';");
 
-            string queryUser = "SELECT USER_NAME();";
-            command = new SqlCommand(queryUser, connection);
-            reader = command.ExecuteReader();
-            reader.Read();
-            Console.WriteLine("[+] Mapped to user: " + reader[0]);
-            reader.Close();
-
-            string queryPubRole = "SELECT IS_SRVROLEMEMBER('public');";
-            command = new SqlCommand(queryPubRole, connection);
-            reader = command.ExecuteReader();
-            reader.Read();
-
-            Int32 role = Int32.Parse(reader[0].ToString());
-            if (role == 1)
+            foreach (string query in queries)
             {
-                Console.WriteLine("[+] User is a member of the 'Public' role");
+                SQLExecutor.ExecuteQuery(connection, query);
             }
-            else
-            {
-                Console.WriteLine("[-] User is not a member of the 'Public' role");
-            }
-            reader.Close();
 
-            string querySARole = "SELECT IS_SRVROLEMEMBER('sysadmin');";
-            command = new SqlCommand(querySARole, connection);
-
-            using (reader = command.ExecuteReader())
-            {
-                reader.Read();
-                role = Int32.Parse(reader[0].ToString());
-                if (role == 1)
-                {
-                    Console.WriteLine("[+] User is a member of the 'sysadmin' role");
-                }
-                else
-                {
-                    Console.WriteLine("[-] User is not a member of the 'sysadmin' role");
-                }
-            }
+            /* 
+             The following query is quite difficult to wrap within my SQLExecutor, mostly due to the fact I implemented the output in tabular format
+             */
 
             if (permissions)
             {
@@ -188,11 +118,11 @@ namespace CheeseSQL.Commands
         FROM   fn_my_permissions(NULL, 'SERVER')) p
     ORDER  BY entity_class,
             NAME";
-                command = new SqlCommand(queryPermissions, connection);
+                SqlCommand command = new SqlCommand(queryPermissions, connection);
 
                 TablePrinter.PrintRow("ENTITY", "NAME", "SUBENTITY", "PERMISSION");
                 TablePrinter.PrintLine();
-                using (reader = command.ExecuteReader())
+                using (SqlDataReader reader = command.ExecuteReader())
                 {
                     while (reader.Read())
                     {

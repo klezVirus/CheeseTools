@@ -30,9 +30,10 @@ namespace CheeseSQL.Helpers
             _availableCommands.Add(clr.CommandName, () => new clr());
             _availableCommands.Add(rpc.CommandName, () => new rpc());
             _availableCommands.Add(linkedxp.CommandName, () => new linkedxp());
-            _availableCommands.Add(linkedclr.CommandName, () => new linkedclr());
             _availableCommands.Add(linkedquery.CommandName, () => new linkedquery());
             _availableCommands.Add(dbllinkedxp.CommandName, () => new dbllinkedxp());
+            _availableCommands.Add(linkedclr.CommandName, () => new linkedclr());
+            _availableCommands.Add(getserverinfo.CommandName, () => new getserverinfo());
         }
 
         public bool ExecuteCommand(string commandName, Dictionary<string, string> arguments)

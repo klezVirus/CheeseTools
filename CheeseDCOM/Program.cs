@@ -1,4 +1,16 @@
-﻿namespace CheeseDCOM
+﻿using Microsoft.Win32;
+using NDesk.Options;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Reflection;
+using System.Security;
+using System.Security.AccessControl;
+using System.Security.Principal;
+using System.ServiceProcess;
+using System.Threading;
+
+namespace CheeseDCOM
 {
 
     internal class AppData

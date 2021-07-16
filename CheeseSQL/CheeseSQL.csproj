@@ -235,6 +235,7 @@
   <ItemGroup>
     <Compile Include="Commands\dbllinkedlogin.cs" />
     <Compile Include="Commands\dbllinkedxp.cs" />
+    <Compile Include="Commands\getserverinfo.cs" />
     <Compile Include="Commands\getlinkeddbuser.cs" />
     <Compile Include="Commands\getdbuser.cs" />
     <Compile Include="Commands\gethash.cs" />
@@ -256,6 +257,7 @@
     <Compile Include="Helpers\AssemblyLoader.cs" />
     <Compile Include="Helpers\CommandCollection.cs" />
     <Compile Include="Helpers\Info.cs" />
+    <Compile Include="Helpers\SQLExecutor.cs" />
     <Compile Include="Helpers\StringUtils.cs" />
     <Compile Include="Helpers\TablePrinter.cs" />
     <Compile Include="Program.cs" />

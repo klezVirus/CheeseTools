@@ -31,8 +31,6 @@ namespace CheeseSQL.Commands
 
         public void Execute(Dictionary<string, string> arguments)
         {
-            string user = "";
-            string password = "";
             string connectInfo = "";
             string database = "";
             string connectserver = "";
@@ -89,69 +87,33 @@ namespace CheeseSQL.Commands
                 return;
             }
 
-            if (sqlauth)
+            SqlConnection connection;
+            SQLExecutor.ConnectionInfo(arguments, connectserver, database, sqlauth, out connectInfo);
+            if (String.IsNullOrEmpty(connectInfo))
             {
-                if (arguments.ContainsKey("/user"))
-                {
-                    user = arguments["/user"];
-                }
-                if (arguments.ContainsKey("/password"))
-                {
-                    password = arguments["/password"];
-                }
-                if (String.IsNullOrEmpty(user))
-                {
-                    Console.WriteLine("\r\n[X] You must supply the SQL account user!\r\n");
-                    return;
-                }
-                if (String.IsNullOrEmpty(password))
-                {
-                    Console.WriteLine("\r\n[X] You must supply the SQL account password!\r\n");
-                    return;
-                }
-                connectInfo = "Data Source= " + connectserver + "; Initial Catalog= " + database + "; User ID=" + user + "; Password=" + password;
+                return;
             }
-            else
+            if (!SQLExecutor.Authenticate(connectInfo, out connection))
             {
-                connectInfo = "Server = " + connectserver + "; Database = " + database + "; Integrated Security = True;";
-            }
-
-            SqlConnection connection = new SqlConnection(connectInfo);
-
-            try
-            {
-                connection.Open();
-                Console.WriteLine($"[+] Authentication to the '{database}' Database on '{connectserver}' Successful!");
-            }
-            catch
-            {
-                Console.WriteLine($"[-] Authentication to the '{database}' Database on '{connectserver}' Failed.");
                 return;
             }
 
-            string queryLogin = $"SELECT * FROM OPENQUERY(\"{target}\", 'SELECT SYSTEM_USER, CURRENT_USER;')";
+            var queries = new List<string>();
 
-            if (!String.IsNullOrEmpty(impersonate_linked))
+            queries.Add("SELECT SYSTEM_USER as 'Logged in as', CURRENT_USER as 'Mapped as';");
+            queries.Add("SELECT IS_SRVROLEMEMBER('public') as 'Public role';");
+            queries.Add("SELECT IS_SRVROLEMEMBER('sysadmin') as 'Sysadmin role';");
+
+            foreach (string query in queries)
             {
-                queryLogin = $"SELECT * FROM OPENQUERY(\"{target}\", 'EXECUTE AS LOGIN = ''{impersonate_linked}'' SELECT SYSTEM_USER, CURRENT_USER;')";
+                SQLExecutor.ExecuteLinkedQuery(connection, query, target, impersonate, impersonate_linked);
             }
-
-
-            if (!String.IsNullOrEmpty(impersonate))
-            {
-                queryLogin = $"EXECUTE AS LOGIN = '{impersonate}' {queryLogin}";
-            }
-            SqlCommand command = new SqlCommand(queryLogin, connection);
-            SqlDataReader reader = command.ExecuteReader();
-            reader.Read();
-            Console.WriteLine("[+] Logged in as: {0}, mapped as {1}", reader[0], reader[1]);
-            reader.Close();
 
             if (permissions)
             {
                 Console.WriteLine("[*] Checking user permissions..");
 
-                string queryPermissions = $@"SELECT * FROM OPENQUERY(""{target}"", 'SELECT *
+                string baseQuery = @"SELECT *
 FROM(SELECT ''OBJECT'' AS entity_class,
             NAME,
             subentity_name,
@@ -171,33 +133,13 @@ FROM(SELECT ''OBJECT'' AS entity_class,
             subentity_name,
             permission_name
     FROM   fn_my_permissions(NULL, ''SERVER'')) p
-ORDER  BY entity_class, NAME');";
+ORDER  BY entity_class, NAME";
+
+                string queryPermissions = $@"SELECT * FROM OPENQUERY(""{target}"", '{baseQuery}');";
 
                 if (!String.IsNullOrEmpty(impersonate_linked))
                 {
-                    queryPermissions = $@"SELECT * FROM OPENQUERY(""{target}"", 'EXECUTE AS LOGIN = ''{impersonate_linked}''
-SELECT *
-	FROM   (SELECT ''OBJECT'' AS entity_class,
-               NAME,
-               subentity_name,
-               permission_name
-        FROM   sys.objects
-               CROSS APPLY fn_my_permissions(QUOTENAME(NAME), ''OBJECT'') a
-        UNION ALL
-        SELECT ''DATABASE'' AS entity_class,
-               NAME,
-               subentity_name,
-               permission_name
-        FROM   sys.databases
-               CROSS APPLY fn_my_permissions(QUOTENAME(NAME), ''DATABASE'') a
-        UNION ALL
-        SELECT ''SERVER''     AS entity_class,
-               @@SERVERNAME AS NAME,
-               subentity_name,
-               permission_name
-        FROM   fn_my_permissions(NULL, ''SERVER'')) p
-ORDER  BY entity_class,
-          NAME');";
+                    queryPermissions = $@"SELECT * FROM OPENQUERY(""{target}"", 'EXECUTE AS LOGIN = ''{impersonate_linked}'' {baseQuery}');";
                 }
 
                 if (!String.IsNullOrEmpty(impersonate))
@@ -205,11 +147,11 @@ ORDER  BY entity_class,
                     queryPermissions = $"EXECUTE AS LOGIN = '{impersonate}' {queryPermissions}";
                 }
 
-                command = new SqlCommand(queryPermissions, connection);
+                SqlCommand command = new SqlCommand(queryPermissions, connection);
 
                 TablePrinter.PrintRow("ENTITY", "NAME", "SUBENTITY", "PERMISSION");
                 TablePrinter.PrintLine();
-                using (reader = command.ExecuteReader())
+                using (SqlDataReader reader = command.ExecuteReader())
                 {
                     while (reader.Read())
                     {

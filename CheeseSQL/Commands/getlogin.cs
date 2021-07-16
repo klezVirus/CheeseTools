@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CheeseSQL.Helpers;
+using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 
@@ -11,7 +12,7 @@ namespace CheeseSQL.Commands
 
         public string Description()
         {
-            return $"[*] {CommandName}\r\n" + 
+            return $"[*] {CommandName}\r\n" +
                    $"  Description: Retrieve SQL Logins Available for Impersonation";
         }
 
@@ -28,9 +29,6 @@ namespace CheeseSQL.Commands
 
         public void Execute(Dictionary<string, string> arguments)
         {
-
-            string user = "";
-            string password = "";
             string connectInfo = "";
             string database = "";
             string connectserver = "";
@@ -66,80 +64,36 @@ namespace CheeseSQL.Commands
                 return;
             }
 
-            if (sqlauth)
+            SqlConnection connection;
+            SQLExecutor.ConnectionInfo(arguments, connectserver, database, sqlauth, out connectInfo);
+            if (String.IsNullOrEmpty(connectInfo))
             {
-                if (arguments.ContainsKey("/user"))
-                {
-                    user = arguments["/user"];
-                }
-                if (arguments.ContainsKey("/password"))
-                {
-                    password = arguments["/password"];
-                }
-                if (String.IsNullOrEmpty(user))
-                {
-                    Console.WriteLine("\r\n[X] You must supply the SQL account user!\r\n");
-                    return;
-                }
-                if (String.IsNullOrEmpty(password))
-                {
-                    Console.WriteLine("\r\n[X] You must supply the SQL account password!\r\n");
-                    return;
-                }
-                connectInfo = "Data Source= " + connectserver + "; Initial Catalog= " + database + "; User ID=" + user + "; Password=" + password;
-            }
-            else
-            {
-                connectInfo = "Server = " + connectserver + "; Database = " + database + "; Integrated Security = True;";
-            }
-
-            SqlConnection connection = new SqlConnection(connectInfo);
-
-            try
-            {
-                connection.Open();
-                Console.WriteLine($"[+] Authentication to the '{database}' Database on '{connectserver}' Successful!");
-            }
-            catch
-            {
-                Console.WriteLine($"[-] Authentication to the '{database}' Database on '{connectserver}' Failed.");
                 return;
             }
+            if (!SQLExecutor.Authenticate(connectInfo, out connection))
+            {
+                return;
+            }
+
             SqlCommand command;
             SqlDataReader reader;
-            string queryLogin = "SELECT SYSTEM_USER;";
+
+            var queries = new List<string>();
 
             if (!String.IsNullOrEmpty(impersonate))
             {
-                string execAs = $"EXECUTE AS LOGIN = '{impersonate}';";
-                command = new SqlCommand(execAs, connection);
-                reader = command.ExecuteReader();
-                reader.Read();
-                Console.WriteLine("[*] Attempting impersonation..");
-                reader.Close();
-
-                command = new SqlCommand(queryLogin, connection);
-                reader = command.ExecuteReader();
-                reader.Read();
-                Console.WriteLine("[+] Logged in as: " + reader[0]);
-                reader.Close();
+                queries.Add($"EXECUTE AS LOGIN = '{impersonate}';");
             }
+            queries.Add("SELECT SYSTEM_USER as 'Logged in as', CURRENT_USER as 'Mapped as';");
 
-            command = new SqlCommand(queryLogin, connection);
-            reader = command.ExecuteReader();
-            reader.Read();
-            Console.WriteLine("[+] Logged in as: " + reader[0]);
-            reader.Close();
-
-            string queryImp = "SELECT distinct b.name FROM sys.server_permissions a INNER JOIN sys.server_principals b ON a.grantor_principal_id = b.principal_id WHERE a.permission_name = 'IMPERSONATE';";
-            command = new SqlCommand(queryImp, connection);
-            reader = command.ExecuteReader();
-            while (reader.Read() == true)
+            foreach (string query in queries)
             {
-                Console.WriteLine("[*] Login that can be impersonated: " + reader[0]);
+                SQLExecutor.ExecuteQuery(connection, query);
             }
-            reader.Close();
 
+            /*
+             Here, we try to identify not only impersonable users, but also impersonable user who are also owners of a trustworthy DB
+             */
             try
             {
                 string queryImpersonable = "SELECT distinct b.name FROM sys.server_permissions a INNER JOIN sys.server_principals b ON a.grantor_principal_id = b.principal_id WHERE a.permission_name = 'IMPERSONATE'";

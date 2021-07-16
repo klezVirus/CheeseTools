@@ -1,4 +1,10 @@
-﻿namespace CheesePS
+﻿using System;
+using System.Diagnostics;
+using System.Management.Automation;
+using System.Runtime.InteropServices;
+using System.Threading;
+
+namespace CheesePS
 {
     internal class AmsiBypass
     {
