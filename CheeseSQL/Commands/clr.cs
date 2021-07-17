@@ -12,74 +12,61 @@ namespace CheeseSQL.Commands
 
         public string Description()
         {
-            return $"[*] {CommandName}\r\n" +
-                   $"  Description: Execute Encoded PowerShell Command on directly accessible or Linked SQL Server via custom .NET assemblies";
+            return $"Execute Encoded PowerShell Command via custom .NET assemblies";
         }
 
         public string Usage()
         {
-            return $"{Description()}\r\n  " +
-                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} " +
-                $"/db:DATABASE " +
-                $"/server:SERVER " +
-                $"/target:TARGET " +
-                $"/command:COMMAND " +
-                $"/assembly:DLL " +
-                $"/class:CLASS " +
-                $"/method:METHOD " +
-                $"[/compile] " +
-                $"[/impersonate:USER] " +
-                $"[/impersonate-linked:USER] " +
-                $"[/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
+            return $@"{Description()} 
+Required arguments:
+  /server:SERVER                   Server to connect to
+  /command:<B64-PWSH>              Command to execute
+
+Optional arguments:
+  /target:TARGET                   Specify a linked SQL server as the target
+  /db:DB                           Specify an alternate database to connect 
+  /assembly:[NAME|URL|PATH]        Specify an assembly name (can also be a URL or a full Path)
+  /class:NAME                      Specify the name of the class within the assembly
+  /method:NAME                     Specify the function to use within the class
+  /compile                         If set, creates a new assembly on the fly
+  /impersonate:USER                Impersonate a user on the connect server
+  /impersonate-intermediate:USER   Impersonate a user on the intermediate server
+  /impersonate-linked:USER         Impersonate a user on the target server
+  /sqlauth                         If set, use SQL authentication
+    /user:SQLUSER                  If /sqlauth, set the user for SQL authentication
+    /password:SQLPASSWORD          If /sqlauth, set the password for SQL authentication";
         }
 
         public void Execute(Dictionary<string, string> arguments)
         {
             string connectInfo = "";
-            string database = "";
-            string connectserver = "";
-            string target = "";
             string assembly = "";
             string clazz = "";
             string cmd = "";
             string method = "";
-            string impersonate = "";
-            string intermediate = "";
-            string impersonate_intermediate = "";
-            string impersonate_linked = "";
+            bool compile;
 
-            bool compile = arguments.ContainsKey("/command");
-
-            bool sqlauth = arguments.ContainsKey("/sqlauth");
-
-            arguments.TryGetValue("/impersonate", out impersonate);
-            arguments.TryGetValue("/intermediate", out intermediate);
-            arguments.TryGetValue("/impersonate-intermediate", out impersonate_intermediate);
-            arguments.TryGetValue("/impersonate-linked", out impersonate_linked);
-            arguments.TryGetValue("/assembly", out assembly);
-            arguments.TryGetValue("/class", out clazz);
-            arguments.TryGetValue("/method", out method);
-
-            if (!arguments.TryGetValue("/db", out database))
+            ArgumentSet argumentSet;
+            try
             {
-                Console.WriteLine("\r\n[X] You must supply a database!\r\n");
+                argumentSet = ArgumentSet.FromDictionary(
+                    arguments,
+                    new List<string>() {
+                        "/command",
+                        "/server"
+                    });
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"[x] Error: {e.Message}");
                 return;
             }
-            if (!arguments.TryGetValue("/server", out connectserver))
-            {
-                Console.WriteLine("\r\n[X] You must supply an authentication server!\r\n");
-                return;
-            }
-            if (!arguments.TryGetValue("/target", out target))
-            {
-                Console.WriteLine("\r\n[X] You must supply a target server!\r\n");
-                return;
-            }
-            if (!arguments.TryGetValue("/command", out cmd))
-            {
-                Console.WriteLine("\r\n[X] You must supply a command to execute!\r\n");
-                return;
-            }
+
+            argumentSet.GetExtraString("/command", out cmd);
+            argumentSet.GetExtraBool("/compile", out compile);
+            argumentSet.GetExtraString("/assembly", out assembly);
+            argumentSet.GetExtraString("/class", out clazz);
+            argumentSet.GetExtraString("/method", out method);
 
             if (String.IsNullOrEmpty(assembly) && !compile)
             {
@@ -106,7 +93,7 @@ namespace CheeseSQL.Commands
 
 
             SqlConnection connection;
-            SQLExecutor.ConnectionInfo(arguments, connectserver, database, sqlauth, out connectInfo);
+            SQLExecutor.ConnectionInfo(arguments, argumentSet.connectserver, argumentSet.database, argumentSet.sqlauth, out connectInfo);
             if (String.IsNullOrEmpty(connectInfo))
             {
                 return;
@@ -143,17 +130,17 @@ namespace CheeseSQL.Commands
             {
                 Console.WriteLine("[*] {0}", step);
 
-                if (String.IsNullOrEmpty(target) && String.IsNullOrEmpty(intermediate))
+                if (String.IsNullOrEmpty(argumentSet.target) && String.IsNullOrEmpty(argumentSet.intermediate))
                 {
                     SQLExecutor.ExecuteProcedure(connection, procedures[step]);
                 }
-                else if (String.IsNullOrEmpty(intermediate))
+                else if (String.IsNullOrEmpty(argumentSet.intermediate))
                 {
-                    SQLExecutor.ExecuteLinkedProcedure(connection, procedures[step], target, impersonate, impersonate_linked);
+                    SQLExecutor.ExecuteLinkedProcedure(connection, procedures[step], argumentSet.target, argumentSet.impersonate, argumentSet.impersonate_linked);
                 }
                 else
                 {
-                    SQLExecutor.ExecuteDoubleLinkedProcedure(connection, procedures[step], target, intermediate, impersonate, impersonate_linked, impersonate_intermediate);
+                    SQLExecutor.ExecuteDoubleLinkedProcedure(connection, procedures[step], argumentSet.target, argumentSet.intermediate, argumentSet.impersonate, argumentSet.impersonate_linked, argumentSet.impersonate_intermediate);
                 }
             }
 

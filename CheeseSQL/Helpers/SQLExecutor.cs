@@ -6,14 +6,14 @@ namespace CheeseSQL.Helpers
 {
     /**
       WARNING: This class is currently in development, to try reducing code duplication when executing SQL statements
-               It's not recommended to use it yet
+               It's usage has been mildly tested and seem to "work", but   
      */
     public class SQLExecutor
     {
         public static string FixBaseCmd(string baseCmd)
         {
             baseCmd = baseCmd.Replace("'", "''");
-            if (baseCmd.Trim().StartsWith("DROP") || baseCmd.Trim().StartsWith("CREATE"))
+            if (baseCmd.Trim().StartsWith("DROP") || baseCmd.Trim().StartsWith("CREATE") || baseCmd.Trim().StartsWith("DECLARE"))
             {
                 baseCmd = $"EXECUTE(''{baseCmd.Replace("'", "''")}'')";
             }

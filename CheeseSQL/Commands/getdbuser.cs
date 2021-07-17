@@ -10,60 +10,52 @@ namespace CheeseSQL.Commands
         public static string CommandName => "getdbuser";
         public string Description()
         {
-            return $"[*] {CommandName}\r\n" +
-                   $"  Description: Retrieve Information on the SQL Login, Currently Mapped User, and Available User Roles";
+            return $"Retrieve Information on the SQL Login, Currently Mapped User, and Available User Roles";
         }
 
         public string Usage()
         {
-            return $"{Description()}\r\n  " +
-                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} " +
-                $"/db:DATABASE " +
-                $"/server:SERVER " +
-                $"[/permissions] " +
-                $"[/intermediate:INTERMEDIATE] " +
-                $"[/target:TARGET] " +
-                $"[/impersonate:USER] " +
-                $"[/impersonate-intermediate:USER] " +
-                $"[/impersonate-linked:USER] " +
-                $"[/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
+            return $@"{Description()} 
+Required arguments:
+  /server:SERVER                   Server to connect to
+
+Optional arguments:
+  /permissions                     If set, print a table with full user permissions
+  /target:TARGET                   Specify a linked SQL server as the target
+  /db:DB                           Specify an alternate database to connect 
+  /impersonate:USER                Impersonate a user on the connect server
+  /impersonate-intermediate:USER   Impersonate a user on the intermediate server
+  /impersonate-linked:USER         Impersonate a user on the target server
+  /sqlauth                         If set, use SQL authentication
+    /user:SQLUSER                  If /sqlauth, set the user for SQL authentication
+    /password:SQLPASSWORD          If /sqlauth, set the password for SQL authentication";
         }
+
 
         public void Execute(Dictionary<string, string> arguments)
         {
-            string database = "";
-            string connectserver = "";
-            string target = "";
-            string intermediate = "";
-            string connectInfo = "";
+            string connectInfo;
+            bool permissions;
 
-
-            string impersonate = "";
-            string impersonate_intermediate = "";
-            string impersonate_linked = "";
-
-            bool permissions = arguments.ContainsKey("/permissions");
-            bool sqlauth = arguments.ContainsKey("/sqlauth");
-
-            arguments.TryGetValue("/impersonate", out impersonate);
-            arguments.TryGetValue("/intermediate", out intermediate);
-            arguments.TryGetValue("/target", out target);
-            arguments.TryGetValue("/impersonate-intermediate", out impersonate_intermediate);
-            arguments.TryGetValue("/impersonate-linked", out impersonate_linked);
-
-            if (!arguments.TryGetValue("/db", out database))
+            ArgumentSet argumentSet;
+            try
             {
-                Console.WriteLine("\r\n[X] You must supply a database!\r\n");
+                argumentSet = ArgumentSet.FromDictionary(
+                    arguments,
+                    new List<string>() {
+                        "/server"
+                    });
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"[x] Error: {e.Message}");
                 return;
             }
-            if (!arguments.TryGetValue("/server", out connectserver))
-            {
-                Console.WriteLine("\r\n[X] You must supply an authentication server!\r\n");
-                return;
-            }
+
+            argumentSet.GetExtraBool("/permissions", out permissions);
 
             SqlConnection connection;
-            SQLExecutor.ConnectionInfo(arguments, connectserver, database, sqlauth, out connectInfo);
+            SQLExecutor.ConnectionInfo(arguments, argumentSet.connectserver, argumentSet.database, argumentSet.sqlauth, out connectInfo);
             if (String.IsNullOrEmpty(connectInfo))
             {
                 return;
@@ -74,9 +66,9 @@ namespace CheeseSQL.Commands
             }
 
             var queries = new List<string>();
-            if (!String.IsNullOrEmpty(impersonate))
+            if (!String.IsNullOrEmpty(argumentSet.impersonate))
             {
-                queries.Add($"EXECUTE AS LOGIN = '{impersonate}';");
+                queries.Add($"EXECUTE AS LOGIN = '{argumentSet.impersonate}';");
             }
             queries.Add("SELECT SYSTEM_USER as 'Logged in as', CURRENT_USER as 'Mapped as';");
             queries.Add("SELECT IS_SRVROLEMEMBER('public') as 'Public role';");
@@ -84,17 +76,31 @@ namespace CheeseSQL.Commands
 
             foreach (string query in queries)
             {
-                if (String.IsNullOrEmpty(target) && String.IsNullOrEmpty(intermediate))
+                if (String.IsNullOrEmpty(argumentSet.target) && String.IsNullOrEmpty(argumentSet.intermediate))
                 {
                     SQLExecutor.ExecuteQuery(connection, query);
                 }
-                else if (String.IsNullOrEmpty(intermediate))
+                else if (String.IsNullOrEmpty(argumentSet.intermediate))
                 {
-                    SQLExecutor.ExecuteLinkedQuery(connection, query, target, impersonate, impersonate_linked);
+                    SQLExecutor.ExecuteLinkedQuery(
+                        connection, 
+                        query, 
+                        argumentSet.target, 
+                        argumentSet.impersonate, 
+                        argumentSet.impersonate_linked
+                        );
                 }
                 else
                 {
-                    SQLExecutor.ExecuteDoublyLinkedQuery(connection, query, target, intermediate, impersonate, impersonate_linked, impersonate_intermediate);
+                    SQLExecutor.ExecuteDoublyLinkedQuery(
+                        connection, 
+                        query, 
+                        argumentSet.target, 
+                        argumentSet.intermediate, 
+                        argumentSet.impersonate, 
+                        argumentSet.impersonate_linked, 
+                        argumentSet.impersonate_intermediate
+                        );
                 }
             }
 
@@ -129,13 +135,25 @@ namespace CheeseSQL.Commands
     ORDER  BY entity_class,
             NAME";
 
-                if (!String.IsNullOrEmpty(intermediate) && !String.IsNullOrEmpty(target))
+                if (!String.IsNullOrEmpty(argumentSet.intermediate) && !String.IsNullOrEmpty(argumentSet.target))
                 {
-                    query = SQLExecutor.PrepareDoublyLinkedQuery(query, target, intermediate, impersonate, impersonate_linked, impersonate_intermediate);
+                    query = SQLExecutor.PrepareDoublyLinkedQuery(
+                        query, 
+                        argumentSet.target, 
+                        argumentSet.intermediate, 
+                        argumentSet.impersonate, 
+                        argumentSet.impersonate_linked, 
+                        argumentSet.impersonate_intermediate
+                        );
                 }
-                else if (!String.IsNullOrEmpty(target))
+                else if (!String.IsNullOrEmpty(argumentSet.target))
                 {
-                    query = SQLExecutor.PrepareLinkedQuery(query, target, impersonate, impersonate_linked);
+                    query = SQLExecutor.PrepareLinkedQuery(
+                        query, 
+                        argumentSet.target, 
+                        argumentSet.impersonate, 
+                        argumentSet.impersonate_linked
+                        );
                 }
 
                 SqlCommand command = new SqlCommand(query, connection);

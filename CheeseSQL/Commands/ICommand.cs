@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using CheeseSQL.Helpers;
+using System.Collections.Generic;
 
 namespace CheeseSQL.Commands
 {

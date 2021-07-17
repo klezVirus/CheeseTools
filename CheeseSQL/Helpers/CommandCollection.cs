@@ -22,12 +22,12 @@ namespace CheeseSQL.Helpers
             _availableCommands.Add(getlogin.CommandName, () => new getlogin());
             _availableCommands.Add(getdbuser.CommandName, () => new getdbuser());
             _availableCommands.Add(getlinked.CommandName, () => new getlinked());
+            _availableCommands.Add(getserverinfo.CommandName, () => new getserverinfo());
             _availableCommands.Add(xp.CommandName, () => new xp());
             _availableCommands.Add(ole.CommandName, () => new ole());
             _availableCommands.Add(clr.CommandName, () => new clr());
             _availableCommands.Add(rpc.CommandName, () => new rpc());
             _availableCommands.Add(linkedqueryxp.CommandName, () => new linkedqueryxp());
-            _availableCommands.Add(getserverinfo.CommandName, () => new getserverinfo());
             _availableCommands.Add(openquery.CommandName, () => new openquery());
         }
 
@@ -43,9 +43,14 @@ namespace CheeseSQL.Helpers
                 {
                     // Create the command object 
                     var command = _availableCommands[commandName].Invoke();
-
-                    // and execute it with the arguments from the command line
-                    command.Execute(arguments);
+                    if (arguments.ContainsKey("/h") || arguments.ContainsKey("/help"))
+                    {
+                        Console.Write(command.Usage() + Environment.NewLine);
+                    }
+                    else { 
+                        // and execute it with the arguments from the command line
+                        command.Execute(arguments);
+                    }
                 }
                 catch (Exception e)
                 {
@@ -68,11 +73,16 @@ namespace CheeseSQL.Helpers
 
         public void ShowUsage()
         {
-            foreach (Func<ICommand> command in this._availableCommands.Values)
+            Console.WriteLine("[*] List of available commands:");
+
+            foreach (string command in this._availableCommands.Keys)
             {
-                var cmd = command.Invoke();
-                Console.WriteLine(cmd.Usage());
+                var cmd = this._availableCommands[command].Invoke();
+                Console.WriteLine($"  - {command,-20}: {cmd.Description()}");
             }
+
+            Console.WriteLine("\r\n[*] For detailed usage, type:");
+            Console.WriteLine($"  - {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} <command> /help");
         }
 
     }

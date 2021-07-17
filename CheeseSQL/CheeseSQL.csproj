@@ -246,6 +246,7 @@
     <Compile Include="Commands\clr.cs" />
     <Compile Include="Commands\ole.cs" />
     <Compile Include="Commands\rpc.cs" />
+    <Compile Include="Helpers\ArgumentSet.cs" />
     <Compile Include="Helpers\ArgParser.cs" />
     <Compile Include="Helpers\ArgParserResult.cs" />
     <Compile Include="Helpers\AssemblyCompiler.cs" />

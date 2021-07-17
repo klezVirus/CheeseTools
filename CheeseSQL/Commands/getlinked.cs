@@ -12,51 +12,54 @@ namespace CheeseSQL.Commands
 
         public string Description()
         {
-            return $"[*] {CommandName}\r\n" +
-                   $"  Description: Retrieve Linked Servers";
+            return $"Retrieve Information about Linked Servers";
         }
 
         public string Usage()
         {
-            return $"{Description()}\r\n  " +
-                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} /db:DATABASE /server:SERVER [/verbose] [/sqlauth /user:SQLUSER /password:SQLPASSWORD]";
+            return $@"{Description()} 
+Required arguments:
+  /server:SERVER                   Server to connect to
+
+Optional arguments:
+  /verbose                         If set, print additional information about the linked server
+  /target:TARGET                   Specify a linked SQL server as the target
+  /db:DB                           Specify an alternate database to connect 
+  /impersonate:USER                Impersonate a user on the connect server
+  /impersonate-intermediate:USER   Impersonate a user on the intermediate server
+  /impersonate-linked:USER         Impersonate a user on the target server
+  /sqlauth                         If set, use SQL authentication
+    /user:SQLUSER                  If /sqlauth, set the user for SQL authentication
+    /password:SQLPASSWORD          If /sqlauth, set the password for SQL authentication";
         }
+
 
         public void Execute(Dictionary<string, string> arguments)
         {
             string connectInfo = "";
-            string database = "";
-            string connectserver = "";
-            string target = "";
-            string intermediate = "";
+            bool verbose;
 
-            string impersonate = "";
-            string impersonate_intermediate = "";
-            string impersonate_linked = "";
+            ArgumentSet argumentSet;
 
-            bool verbose = arguments.ContainsKey("/verbose");
-            bool sqlauth = arguments.ContainsKey("/sqlauth");
-
-            arguments.TryGetValue("/impersonate", out impersonate);
-            arguments.TryGetValue("/intermediate", out intermediate);
-            arguments.TryGetValue("/target", out target);
-            arguments.TryGetValue("/impersonate-intermediate", out impersonate_intermediate);
-            arguments.TryGetValue("/impersonate-linked", out impersonate_linked);
-
-            if (!arguments.TryGetValue("/db", out database))
+            try
             {
-                Console.WriteLine("\r\n[X] You must supply a database!\r\n");
+                argumentSet = ArgumentSet.FromDictionary(
+                    arguments,
+                    new List<string>() {
+                        "/server"
+                    });
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"[x] Error: {e.Message}");
                 return;
             }
-            if (!arguments.TryGetValue("/server", out connectserver))
-            {
-                Console.WriteLine("\r\n[X] You must supply an authentication server!\r\n");
-                return;
-            }
+
+            argumentSet.GetExtraBool("/verbose", out verbose);
 
 
             SqlConnection connection;
-            SQLExecutor.ConnectionInfo(arguments, connectserver, database, sqlauth, out connectInfo);
+            SQLExecutor.ConnectionInfo(arguments, argumentSet.connectserver, argumentSet.database, argumentSet.sqlauth, out connectInfo);
             if (String.IsNullOrEmpty(connectInfo))
             {
                 return;

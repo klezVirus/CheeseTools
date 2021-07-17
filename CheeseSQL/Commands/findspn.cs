@@ -12,19 +12,18 @@ namespace CheeseSQL
         public static string CommandName => "findspn";
         public string Description()
         {
-            return $"[*] {CommandName}\r\n" +
-                   $"  Description: Find MSSQL Instances, using Domain SPNs";
+            return $"Find MSSQL Instances, using Domain SPNs";
         }
 
         public string Usage()
         {
-            return $"{Description()}\r\n  " +
-                $"Usage: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {CommandName} " +
-                $"/ldapPath:LDAP_PATH " +
-                $"/account:FILTER " +
-                $"/computer";
+            return $@"{Description()} 
+Optional arguments:
+  /ldapPath:LDAP                   Specify the LDAP Path for the search
+  /account:ACCOUTN                 Specify an LDAP account filter for the search
+  /computer                        If set, consider the account filter as a Machine account";
         }
-
+ 
         public void Execute(Dictionary<string, string> arguments)
         {
             
