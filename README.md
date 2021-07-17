@@ -150,7 +150,7 @@ _Note: If executed without options, the program will try to inject in an active 
 Command Exec / Lateral Movement via MSSQL Trust. 
 This tool has been developed to overcome some of the limitations given by already existing tools like [esc](https://github.com/NetSPI/ESC), mostly regarding MSSQL impersonation.
 Moreover, CheeseSQL has been specifically modified to run from Covenant (via reflective loading), and to automate the most important phases of MSSQL trust abuse.
-Particuarly niche is the implementation of the CLR abuse, which allow a user to compile and upload a MSSQL extension on the fly with Roselyin to achive command execution.
+Particuarly funny is the implementation of the CLR abuse, which allow a user to compile and upload a MSSQL extension on the fly with Roslyn to achieve command execution.
 A very little demo is shown below, the command executed is an encoded PowerShell Covenant downloader):
 
 ![CheeseSQL CLR Attack](./assets/cheesesql-clr.gif)
