@@ -68,7 +68,7 @@ Optional arguments:
             }
             catch (Exception ex)
             {
-                Console.WriteLine("{0} : {1}", domainController, ex.Message);
+                Console.WriteLine("[-] Error: {0}, {1}", domainController, ex.Message);
                 return;
             }
 

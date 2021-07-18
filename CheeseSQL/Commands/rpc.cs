@@ -63,9 +63,12 @@ Optional arguments:
 
             var procedures = new Dictionary<string, string>();
 
+            // I am confused about why it is necessary to perform this step as a separate procedure
+            // But it seems in-line impersonation doesn't work properly
             if (!String.IsNullOrEmpty(argumentSet.impersonate))
             {
-                procedures.Add($"Attempting impersonation as {argumentSet.impersonate}..", $"EXECUTE AS LOGIN = '{argumentSet.impersonate}';");
+                Console.WriteLine("[*] Attempting impersonation as {0}", argumentSet.impersonate);
+                SQLExecutor.ExecuteProcedure(connection, "", argumentSet.impersonate);
             }
 
             procedures.Add("Enabling RPC..", $"EXEC sp_serveroption '{argumentSet.target}', 'rpc', 'true'; EXEC sp_serveroption '{argumentSet.target}', 'rpc out', 'true';");
@@ -75,7 +78,11 @@ Optional arguments:
                 Console.WriteLine("[*] {0}", step);
                 if (String.IsNullOrEmpty(argumentSet.intermediate))
                 {
-                    SQLExecutor.ExecuteProcedure(connection, procedures[step]);
+                    SQLExecutor.ExecuteProcedure(
+                        connection,
+                        procedures[step],
+                        argumentSet.impersonate
+                        );
                 }
                 else 
                 {

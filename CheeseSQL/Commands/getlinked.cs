@@ -69,9 +69,19 @@ Optional arguments:
                 return;
             }
 
-            if (!verbose)
+            // I am confused about why it is necessary to perform this step as a separate procedure
+            // But it seems in-line impersonation doesn't work properly
+            if (!String.IsNullOrEmpty(argumentSet.impersonate))
+            {
+                Console.WriteLine("[*] Attempting impersonation as {0}", argumentSet.impersonate);
+                SQLExecutor.ExecuteProcedure(connection, "", argumentSet.impersonate);
+            }
+
+            if (!verbose && String.IsNullOrEmpty(argumentSet.target))
             {
                 string procedure = "EXECUTE sp_linkedservers;";
+                procedure = SQLExecutor.PrepareSimpleStatement(procedure, argumentSet.impersonate);
+
                 SqlCommand command = new SqlCommand(procedure, connection);
 
                 using (SqlDataReader reader = command.ExecuteReader())
@@ -85,6 +95,36 @@ Optional arguments:
             else
             {
                 string query = "SELECT name, is_linked, is_remote_login_enabled, is_data_access_enabled, is_rpc_out_enabled FROM sys.servers;";
+                if (String.IsNullOrEmpty(argumentSet.target) && String.IsNullOrEmpty(argumentSet.intermediate))
+                {
+                    query = SQLExecutor.PrepareSimpleStatement(
+                        query,
+                        argumentSet.impersonate
+                        );
+                }
+                else if (String.IsNullOrEmpty(argumentSet.intermediate))
+                {
+                    query = SQLExecutor.PrepareLinkedQuery(
+                        query,
+                        argumentSet.target,
+                        argumentSet.impersonate,
+                        argumentSet.impersonate_linked
+                        );
+
+                }
+                else
+                {
+                    query = SQLExecutor.PrepareDoublyLinkedQuery(
+                        query,
+                        argumentSet.target,
+                        argumentSet.intermediate,
+                        argumentSet.impersonate,
+                        argumentSet.impersonate_linked,
+                        argumentSet.impersonate_intermediate
+                        );
+
+                }
+
                 SqlCommand command = new SqlCommand(query, connection);
 
                 using (SqlDataReader reader = command.ExecuteReader())

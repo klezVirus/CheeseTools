@@ -80,14 +80,21 @@ namespace CheeseSQL.Helpers
 
         }
 
-        public static void ExecuteProcedure(SqlConnection connection, string procedure)
+        public static string PrepareSimpleStatement(string statement, string impersonate) {
+            if (!String.IsNullOrEmpty(impersonate)) {
+                statement = $"EXECUTE AS LOGIN = '{impersonate}' {statement}";
+            }
+            return statement;
+        }
+        
+        public static void ExecuteProcedure(SqlConnection connection, string procedure, string impersonate)
         {
-            TrySqlExecute(connection, procedure);
+            TrySqlExecute(connection, PrepareSimpleStatement(procedure, impersonate));
         }
 
-        public static void ExecuteQuery(SqlConnection connection, string query)
+        public static void ExecuteQuery(SqlConnection connection, string query, string impersonate)
         {
-            TrySqlExecute(connection, query);
+            TrySqlExecute(connection, PrepareSimpleStatement(query, impersonate));
         }
 
         public static string PrepareLinkedQuery(string baseQuery, string target, string impersonate, string impersonate_linked)
@@ -104,7 +111,7 @@ namespace CheeseSQL.Helpers
 
             if (!String.IsNullOrEmpty(impersonate))
             {
-                query = $"EXECUTE AS LOGIN = '{impersonate}' {query}";
+                query = $"EXECUTE AS LOGIN = '{impersonate}'; {query}";
             }
             return query;
         }
@@ -200,6 +207,7 @@ namespace CheeseSQL.Helpers
 
         public static void TrySqlExecute(SqlConnection connection, string procedure)
         {
+            
             try
             {
                 SqlCommand command = new SqlCommand(procedure, connection);

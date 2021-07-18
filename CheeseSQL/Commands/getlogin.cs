@@ -63,12 +63,16 @@ Optional arguments:
                 return;
             }
 
-            var queries = new List<string>();
-
+            // I am confused about why it is necessary to perform this step as a separate procedure
+            // But it seems in-line impersonation doesn't work properly
             if (!String.IsNullOrEmpty(argumentSet.impersonate))
             {
-                queries.Add($"EXECUTE AS LOGIN = '{argumentSet.impersonate}';");
+                Console.WriteLine("[*] Attempting impersonation as {0}", argumentSet.impersonate);
+                SQLExecutor.ExecuteProcedure(connection, "", argumentSet.impersonate);
             }
+
+            var queries = new List<string>();
+
             queries.Add("SELECT SYSTEM_USER as 'Logged in as', CURRENT_USER as 'Mapped as';");
             queries.Add("SELECT distinct b.name AS 'Login that can be impersonated' FROM sys.server_permissions a INNER JOIN sys.server_principals b ON a.grantor_principal_id = b.principal_id WHERE a.permission_name = 'IMPERSONATE';");
             queries.Add("SELECT name as 'Owner that can be impersonated', db as 'Trustworthy DB' FROM (SELECT distinct b.name FROM sys.server_permissions a INNER JOIN sys.server_principals b ON a.grantor_principal_id = b.principal_id WHERE a.permission_name = 'IMPERSONATE') impersonable LEFT JOIN (select name AS db, suser_sname( owner_sid ) as owner, is_trustworthy_on from sys.databases) owners ON owners.owner = impersonable.name WHERE is_trustworthy_on = 1;");
@@ -77,7 +81,11 @@ Optional arguments:
             {
                 if (String.IsNullOrEmpty(argumentSet.target) && String.IsNullOrEmpty(argumentSet.intermediate)) 
                 {
-                    SQLExecutor.ExecuteQuery(connection, query);
+                    SQLExecutor.ExecuteQuery(
+                        connection, 
+                        query, 
+                        argumentSet.impersonate
+                        );
                 } else if (String.IsNullOrEmpty(argumentSet.intermediate)) 
                 {
                     SQLExecutor.ExecuteLinkedQuery(

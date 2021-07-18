@@ -103,6 +103,14 @@ Optional arguments:
                 return;
             }
 
+            // I am confused about why it is necessary to perform this step as a separate procedure
+            // But it seems in-line impersonation doesn't work properly
+            if (!String.IsNullOrEmpty(argumentSet.impersonate))
+            {
+                Console.WriteLine("[*] Attempting impersonation as {0}", argumentSet.impersonate);
+                SQLExecutor.ExecuteProcedure(connection, "", argumentSet.impersonate);
+            }
+
             Console.WriteLine("[*] Loading assembly..");
 
             string hash;
@@ -132,15 +140,33 @@ Optional arguments:
 
                 if (String.IsNullOrEmpty(argumentSet.target) && String.IsNullOrEmpty(argumentSet.intermediate))
                 {
-                    SQLExecutor.ExecuteProcedure(connection, procedures[step]);
+                    SQLExecutor.ExecuteProcedure(
+                        connection,
+                        procedures[step],
+                        argumentSet.impersonate
+                        );
                 }
                 else if (String.IsNullOrEmpty(argumentSet.intermediate))
                 {
-                    SQLExecutor.ExecuteLinkedProcedure(connection, procedures[step], argumentSet.target, argumentSet.impersonate, argumentSet.impersonate_linked);
+                    SQLExecutor.ExecuteLinkedProcedure(
+                        connection, 
+                        procedures[step], 
+                        argumentSet.target, 
+                        argumentSet.impersonate, 
+                        argumentSet.impersonate_linked
+                        );
                 }
                 else
                 {
-                    SQLExecutor.ExecuteDoubleLinkedProcedure(connection, procedures[step], argumentSet.target, argumentSet.intermediate, argumentSet.impersonate, argumentSet.impersonate_linked, argumentSet.impersonate_intermediate);
+                    SQLExecutor.ExecuteDoubleLinkedProcedure(
+                        connection, 
+                        procedures[step], 
+                        argumentSet.target, 
+                        argumentSet.intermediate, 
+                        argumentSet.impersonate, 
+                        argumentSet.impersonate_linked, 
+                        argumentSet.impersonate_intermediate
+                        );
                 }
             }
 

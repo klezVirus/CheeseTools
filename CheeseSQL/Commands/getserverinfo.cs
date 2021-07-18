@@ -61,11 +61,13 @@ Optional arguments:
                 return;
             }
 
-            if (!String.IsNullOrEmpty(argumentSet.impersonate) && string.IsNullOrEmpty(argumentSet.target))
+            // I am confused about why it is necessary to perform this step as a separate procedure
+            // But it seems in-line impersonation doesn't work properly
+            if (!String.IsNullOrEmpty(argumentSet.impersonate))
             {
-                SQLExecutor.ExecuteQuery(connection, $"EXECUTE AS LOGIN = '{argumentSet.impersonate}';");
+                Console.WriteLine("[*] Attempting impersonation as {0}", argumentSet.impersonate);
+                SQLExecutor.ExecuteProcedure(connection, "", argumentSet.impersonate);
             }
-
 
             var configurations = new string[] {
                 "show advanced options",
@@ -87,7 +89,11 @@ Optional arguments:
                 {
                     if (string.IsNullOrEmpty(argumentSet.target) && string.IsNullOrEmpty(argumentSet.intermediate))
                     {
-                        SQLExecutor.ExecuteQuery(connection, String.Format(query, config));
+                        SQLExecutor.ExecuteQuery(
+                            connection,
+                            String.Format(query, config),
+                            argumentSet.impersonate
+                            );
                     }
                     else if (string.IsNullOrEmpty(argumentSet.intermediate))
                     {

@@ -65,11 +65,16 @@ Optional arguments:
                 return;
             }
 
-            var queries = new List<string>();
+            // I am confused about why it is necessary to perform this step as a separate procedure
+            // But it seems in-line impersonation doesn't work properly
             if (!String.IsNullOrEmpty(argumentSet.impersonate))
             {
-                queries.Add($"EXECUTE AS LOGIN = '{argumentSet.impersonate}';");
+                Console.WriteLine("[*] Attempting impersonation as {0}", argumentSet.impersonate);
+                SQLExecutor.ExecuteProcedure(connection, "", argumentSet.impersonate);
             }
+
+            var queries = new List<string>();
+            
             queries.Add("SELECT SYSTEM_USER as 'Logged in as', CURRENT_USER as 'Mapped as';");
             queries.Add("SELECT IS_SRVROLEMEMBER('public') as 'Public role';");
             queries.Add("SELECT IS_SRVROLEMEMBER('sysadmin') as 'Sysadmin role';");
@@ -78,7 +83,10 @@ Optional arguments:
             {
                 if (String.IsNullOrEmpty(argumentSet.target) && String.IsNullOrEmpty(argumentSet.intermediate))
                 {
-                    SQLExecutor.ExecuteQuery(connection, query);
+                    SQLExecutor.ExecuteQuery(
+                        connection, 
+                        query,
+                        argumentSet.impersonate);
                 }
                 else if (String.IsNullOrEmpty(argumentSet.intermediate))
                 {
