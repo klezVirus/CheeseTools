@@ -167,6 +167,7 @@ Also, I really recommend to see all the tools from [NetSPI](https://twitter.com/
 ```
 [*] List of available commands:
   - findspn             : Find MSSQL Instances, using Domain SPNs
+  - listdb              : List available Databases on the server
   - gethash             : Send Service Account Net-NTLM Hash to an Arbitrary IP
   - getlogin            : Retrieve SQL Logins Available for Impersonation
   - getdbuser           : Retrieve Information on the SQL Login, Currently Mapped User, and Available User Roles
