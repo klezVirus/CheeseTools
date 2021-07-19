@@ -87,14 +87,14 @@ namespace CheeseSQL.Helpers
             return statement;
         }
         
-        public static void ExecuteProcedure(SqlConnection connection, string procedure, string impersonate)
+        public static void ExecuteProcedure(SqlConnection connection, string procedure, string impersonate, bool separator = false)
         {
-            TrySqlExecute(connection, PrepareSimpleStatement(procedure, impersonate));
+            TrySqlExecute(connection, PrepareSimpleStatement(procedure, impersonate), separator);
         }
 
-        public static void ExecuteQuery(SqlConnection connection, string query, string impersonate)
+        public static void ExecuteQuery(SqlConnection connection, string query, string impersonate, bool separator = false)
         {
-            TrySqlExecute(connection, PrepareSimpleStatement(query, impersonate));
+            TrySqlExecute(connection, PrepareSimpleStatement(query, impersonate), separator);
         }
 
         public static string PrepareLinkedQuery(string baseQuery, string target, string impersonate, string impersonate_linked)
@@ -115,11 +115,11 @@ namespace CheeseSQL.Helpers
             }
             return query;
         }
-        public static void ExecuteLinkedQuery(SqlConnection connection, string baseQuery, string target, string impersonate, string impersonate_linked)
+        public static void ExecuteLinkedQuery(SqlConnection connection, string baseQuery, string target, string impersonate, string impersonate_linked, bool separator = false)
         {
 
             string query = PrepareLinkedQuery(baseQuery, target, impersonate, impersonate_linked);
-            TrySqlExecute(connection, query);
+            TrySqlExecute(connection, query, separator);
 
         }
         public static string PrepareDoublyLinkedQuery(string baseQuery, string target, string intermediate, string impersonate, string impersonate_linked, string impersonate_intermediate)
@@ -151,15 +151,15 @@ namespace CheeseSQL.Helpers
             return query;
         }        
         
-        public static void ExecuteDoublyLinkedQuery(SqlConnection connection, string baseQuery, string target, string intermediate, string impersonate, string impersonate_linked, string impersonate_intermediate)
+        public static void ExecuteDoublyLinkedQuery(SqlConnection connection, string baseQuery, string target, string intermediate, string impersonate, string impersonate_linked, string impersonate_intermediate, bool separator = false)
         {
 
             string query = PrepareDoublyLinkedQuery(baseQuery, target, intermediate, impersonate, impersonate_linked, impersonate_intermediate);
-            TrySqlExecute(connection, query);
+            TrySqlExecute(connection, query, separator);
 
         }
 
-        public static void ExecuteLinkedProcedure(SqlConnection connection, string baseCmd, string target, string impersonate, string impersonate_linked)
+        public static void ExecuteLinkedProcedure(SqlConnection connection, string baseCmd, string target, string impersonate, string impersonate_linked, bool separator = false)
         {
 
             baseCmd = FixBaseCmd(baseCmd);
@@ -174,10 +174,10 @@ namespace CheeseSQL.Helpers
             {
                 procedure = $"EXECUTE AS LOGIN = '{impersonate}' {procedure}";
             }
-            TrySqlExecute(connection, procedure);
+            TrySqlExecute(connection, procedure, separator);
         }
 
-        public static void ExecuteDoubleLinkedProcedure(SqlConnection connection, string baseCmd, string target, string intermediate, string impersonate, string impersonate_linked, string impersonate_intermediate)
+        public static void ExecuteDoubleLinkedProcedure(SqlConnection connection, string baseCmd, string target, string intermediate, string impersonate, string impersonate_linked, string impersonate_intermediate, bool separator = false)
         {
 
             baseCmd = FixBaseCmd(baseCmd);
@@ -202,10 +202,10 @@ namespace CheeseSQL.Helpers
             {
                 procedure = $"EXECUTE AS LOGIN = '{impersonate}' {procedure}";
             }
-            TrySqlExecute(connection, procedure);
+            TrySqlExecute(connection, procedure, separator);
         }
 
-        public static void TrySqlExecute(SqlConnection connection, string procedure)
+        public static void TrySqlExecute(SqlConnection connection, string procedure, bool separator)
         {
             
             try
@@ -221,6 +221,9 @@ namespace CheeseSQL.Helpers
                             if (reader.FieldCount == 0) { break; }
                             else
                             {
+                                int written = 0;
+                                string msg = String.Empty;
+
                                 for (var i = 0; i < reader.FieldCount; i++)
                                 {
                                     string name = reader.GetName(i);
@@ -242,8 +245,16 @@ namespace CheeseSQL.Helpers
                                     {
                                         value = reader.GetValue(i).ToString();
                                     }
-                                    Console.WriteLine(String.Format("[+] {0:-15}: {1}", name, value));
+                                    msg = (written == 0) ?
+                                        String.Format("[+] {0:-15}: {1}", name, value) :
+                                        String.Format("    {0:-15}: {1}", name, value);
+                                    Console.WriteLine(msg);
+                                    written++;
                                 }
+                                if (written > 1 && separator) {
+                                    Console.WriteLine("   {0}", new String('-', 40));
+                                }
+                                written = 0;
                             }
                         }
 

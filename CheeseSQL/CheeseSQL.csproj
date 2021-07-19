@@ -233,6 +233,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Commands\listdb.cs" />
     <Compile Include="Commands\getlogin.cs" />
     <Compile Include="Commands\openquery.cs" />
     <Compile Include="Commands\xp.cs" />
@@ -242,7 +243,7 @@
     <Compile Include="Commands\getlinked.cs" />
     <Compile Include="Commands\findspn.cs" />
     <Compile Include="Commands\ICommand.cs" />
-    <Compile Include="Commands\linkedqueryxp.cs" />
+    <Compile Include="Commands\xpoquery.cs" />
     <Compile Include="Commands\clr.cs" />
     <Compile Include="Commands\ole.cs" />
     <Compile Include="Commands\rpc.cs" />

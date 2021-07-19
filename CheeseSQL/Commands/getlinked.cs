@@ -94,55 +94,47 @@ Optional arguments:
             }
             else
             {
-                string query = "SELECT name, is_linked, is_remote_login_enabled, is_data_access_enabled, is_rpc_out_enabled FROM sys.servers;";
+                string query = @"SELECT 
+    name AS 'SQL Server', 
+    is_linked AS 'Linked', 
+    is_remote_login_enabled AS 'Remote Login', 
+    is_data_access_enabled AS 'Data Access', 
+    is_rpc_out_enabled AS 'RPC Out'
+FROM sys.servers;
+";
                 if (String.IsNullOrEmpty(argumentSet.target) && String.IsNullOrEmpty(argumentSet.intermediate))
                 {
-                    query = SQLExecutor.PrepareSimpleStatement(
+                    SQLExecutor.ExecuteQuery(
+                        connection,
                         query,
-                        argumentSet.impersonate
+                        argumentSet.impersonate,
+                        true
                         );
                 }
                 else if (String.IsNullOrEmpty(argumentSet.intermediate))
                 {
-                    query = SQLExecutor.PrepareLinkedQuery(
+                    SQLExecutor.ExecuteLinkedQuery(
+                        connection,
                         query,
                         argumentSet.target,
                         argumentSet.impersonate,
-                        argumentSet.impersonate_linked
+                        argumentSet.impersonate_linked,
+                        true
                         );
-
                 }
                 else
                 {
-                    query = SQLExecutor.PrepareDoublyLinkedQuery(
+                    SQLExecutor.ExecuteDoublyLinkedQuery(
+                        connection,
                         query,
                         argumentSet.target,
                         argumentSet.intermediate,
                         argumentSet.impersonate,
                         argumentSet.impersonate_linked,
-                        argumentSet.impersonate_intermediate
+                        argumentSet.impersonate_intermediate,
+                        true
                         );
-
                 }
-
-                SqlCommand command = new SqlCommand(query, connection);
-
-                using (SqlDataReader reader = command.ExecuteReader())
-                {
-
-                    while (reader.Read())
-                    {
-                        Console.Write($@"
-[*] SQL server:   {reader.GetString(0)}
-    Linked:       {reader.GetBoolean(1).ToString()}
-    Remote Login: {reader.GetBoolean(2).ToString()}
-    Data Access:  {reader.GetBoolean(3).ToString()}
-    RPC out:      {reader.GetBoolean(4).ToString()}
-    ----------------------------------------- 
-");
-                    }
-                }
-
             }
             connection.Close();
         }
