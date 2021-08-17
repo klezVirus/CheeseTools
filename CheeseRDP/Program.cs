@@ -34,7 +34,7 @@ namespace CheeseRDP
             if ((args.Length >= 1) && (args[0] == "help"))
             {
                 PrintHelp();
-                Environment.Exit(0);
+                return;
             }
             else if ((args.Length >= 1) && (args[0] == "wait"))
             {
@@ -54,7 +54,7 @@ namespace CheeseRDP
                 catch
                 {
                 }
-                Environment.Exit(0);
+                return;
             }
 
             else if ((args.Length >= 1) && (args[0] == "clean"))
@@ -69,7 +69,7 @@ namespace CheeseRDP
                 catch
                 {
                 }
-                Environment.Exit(0);
+                return;
             }
 
             Console.WriteLine("[*] Waiting for mstsc.exe...");
